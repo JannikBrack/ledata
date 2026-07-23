@@ -12,14 +12,14 @@ LED_CHANNEL = 0       # Set to '1' for GPIOs 13, 19, 41, 45 or 53
 
 
 def all_on(strip, color=Color(255, 255, 255)):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
+    for pixel_index in range(strip.numPixels()):
+        strip.setPixelColor(pixel_index, color)
     strip.show()
 
 
 def all_off(strip):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, Color(0, 0, 0))
+    for pixel_index in range(strip.numPixels()):
+        strip.setPixelColor(pixel_index, Color(0, 0, 0))
     strip.show()
 
 
