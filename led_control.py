@@ -2,39 +2,42 @@ import time
 import board
 import neopixel
 
-# LED strip configuration
-LED_COUNT = 100       # Number of LED pixels
-LED_PIN = board.D18   # GPIO pin connected to the pixels
-LED_BRIGHTNESS = 0.2  # Set to 0.0 for darkest and 1.0 for brightest
+num_pixels = 100  # anpassen falls nötig: physische LEDs / 3
 
+pixels = neopixel.NeoPixel(
+    board.D18,
+    num_pixels,
+    brightness=0.5,
+    auto_write=False,
+    pixel_order=neopixel.RGB
+)
 
-def all_on(strip, color=(255, 255, 255)):
-    strip.fill(color)
-    strip.show()
+print("Test 1: Alle LEDs rot")
+pixels.fill((255, 0, 0))
+pixels.show()
+time.sleep(2)
 
+print("Test 2: Alle LEDs grün")
+pixels.fill((0, 255, 0))
+pixels.show()
+time.sleep(2)
 
-def all_off(strip):
-    strip.fill((0, 0, 0))
-    strip.show()
+print("Test 3: Alle LEDs blau")
+pixels.fill((0, 0, 255))
+pixels.show()
+time.sleep(2)
 
+print("Test 4: Alle LEDs aus")
+pixels.fill((0, 0, 0))
+pixels.show()
+time.sleep(1)
 
-if __name__ == "__main__":
-    strip = neopixel.NeoPixel(
-        LED_PIN,
-        LED_COUNT,
-        brightness=LED_BRIGHTNESS,
-        auto_write=False,
-    )
+print("Test 5: LED für LED durchlaufen (checkt ob alle Pixel einzeln ansteuerbar sind)")
+pixels.fill((0, 0, 0))
+pixels.show()
+for i in range(num_pixels):
+    pixels[i] = (255, 255, 255)
+    pixels.show()
+    time.sleep(0.05)
 
-    print("Press Ctrl-C to quit.")
-    try:
-        while True:
-            print("All LEDs on")
-            all_on(strip)
-            time.sleep(5)
-
-            print("All LEDs off")
-            all_off(strip)
-            time.sleep(5)
-    except KeyboardInterrupt:
-        all_off(strip)
+print("Fertig!")
