@@ -4,56 +4,55 @@ import time
 from rpi_ws281x import PixelStrip, Color
 
 # LED strip configuration
-LED_COUNT = 300        # Number of LED pixels
-LED_PIN = 18           # GPIO pin connected to the pixels (18 uses PWM!)
-LED_FREQ_HZ = 800000   # LED signal frequency in hertz (usually 800khz)
-LED_DMA = 10           # DMA channel to use for generating signal (try 10)
-LED_BRIGHTNESS = 128   # Set to 0 for darkest and 255 for brightest
-LED_INVERT = False     # True to invert the signal (when using NPN transistor level shift)
-LED_CHANNEL = 0        # Set to '1' for GPIOs 13, 19, 41, 45 or 53
+# RGB+CCT: 2x WS2811 IC pro LED-Gruppe (IC1=RGB, IC2=CW/WW)
+LED_COUNT = 300        # Anzahl ICs gesamt (= 2 × physische LED-Gruppen)
+LED_PIN = 18
+LED_FREQ_HZ = 800000
+LED_DMA = 10
+LED_BRIGHTNESS = 128
+LED_INVERT = False
+LED_CHANNEL = 0
 
-strip = PixelStrip(
-    LED_COUNT,
-    LED_PIN,
-    LED_FREQ_HZ,
-    LED_DMA,
-    LED_INVERT,
-    LED_BRIGHTNESS,
-    LED_CHANNEL,
-)
+strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
 strip.begin()
 
+NUM_GROUPS = LED_COUNT // 2  # 150 physische LED-Gruppen
+
+def set_all(r, g, b, cw, ww):
+    for i in range(NUM_GROUPS):
+        strip.setPixelColor(i * 2,     Color(r, g, b))    # IC1: RGB
+        strip.setPixelColor(i * 2 + 1, Color(cw, ww, 0)) # IC2: CW, WW, ungenutzt
+    strip.show()
+
 print("Test 1: Alle LEDs rot")
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(255, 0, 0))
-strip.show()
+set_all(255, 0, 0, 0, 0)
 time.sleep(2)
 
 print("Test 2: Alle LEDs grün")
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(0, 255, 0))
-strip.show()
+set_all(0, 255, 0, 0, 0)
 time.sleep(2)
 
 print("Test 3: Alle LEDs blau")
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(0, 0, 255))
-strip.show()
+set_all(0, 0, 255, 0, 0)
 time.sleep(2)
 
-print("Test 4: Alle LEDs aus")
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(0, 0, 0))
-strip.show()
+print("Test 4: Alle LEDs warm weiß")
+set_all(0, 0, 0, 0, 255)
+time.sleep(2)
+
+print("Test 5: Alle LEDs kalt weiß")
+set_all(0, 0, 0, 255, 0)
+time.sleep(2)
+
+print("Test 6: Alle LEDs aus")
+set_all(0, 0, 0, 0, 0)
 time.sleep(1)
 
-print("Test 5: LED für LED durchlaufen (checkt ob alle Pixel einzeln ansteuerbar sind)")
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(0, 0, 0))
-strip.show()
-for i in range(strip.numPixels()):
-    strip.setPixelColor(i, Color(255, 255, 255))
+print("Test 7: LED für LED durchlaufen")
+for i in range(NUM_GROUPS):
+    strip.setPixelColor(i * 2, Color(255, 255, 255))
     strip.show()
     time.sleep(0.05)
+set_all(0, 0, 0, 0, 0)
 
 print("Fertig!")
