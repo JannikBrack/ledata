@@ -1,43 +1,57 @@
 import time
-import board
-import neopixel
+from rpi_ws281x import PixelStrip, Color
 
-num_pixels = 100  # anpassen falls nötig: physische LEDs / 3
+# LED strip configuration
+LED_COUNT = 100        # Number of LED pixels
+LED_PIN = 18           # GPIO pin connected to the pixels (18 uses PWM!)
+LED_FREQ_HZ = 800000   # LED signal frequency in hertz (usually 800khz)
+LED_DMA = 10           # DMA channel to use for generating signal (try 10)
+LED_BRIGHTNESS = 128   # Set to 0 for darkest and 255 for brightest
+LED_INVERT = False     # True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL = 0        # Set to '1' for GPIOs 13, 19, 41, 45 or 53
 
-pixels = neopixel.NeoPixel(
-    board.D18,
-    num_pixels,
-    brightness=0.5,
-    auto_write=False,
-    pixel_order=neopixel.RGB
+strip = PixelStrip(
+    LED_COUNT,
+    LED_PIN,
+    LED_FREQ_HZ,
+    LED_DMA,
+    LED_INVERT,
+    LED_BRIGHTNESS,
+    LED_CHANNEL,
 )
+strip.begin()
 
 print("Test 1: Alle LEDs rot")
-pixels.fill((255, 0, 0))
-pixels.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(255, 0, 0))
+strip.show()
 time.sleep(2)
 
 print("Test 2: Alle LEDs grün")
-pixels.fill((0, 255, 0))
-pixels.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 255, 0))
+strip.show()
 time.sleep(2)
 
 print("Test 3: Alle LEDs blau")
-pixels.fill((0, 0, 255))
-pixels.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 0, 255))
+strip.show()
 time.sleep(2)
 
 print("Test 4: Alle LEDs aus")
-pixels.fill((0, 0, 0))
-pixels.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 0, 0))
+strip.show()
 time.sleep(1)
 
 print("Test 5: LED für LED durchlaufen (checkt ob alle Pixel einzeln ansteuerbar sind)")
-pixels.fill((0, 0, 0))
-pixels.show()
-for i in range(num_pixels):
-    pixels[i] = (255, 255, 255)
-    pixels.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 0, 0))
+strip.show()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(255, 255, 255))
+    strip.show()
     time.sleep(0.05)
 
 print("Fertig!")
