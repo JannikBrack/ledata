@@ -7,7 +7,7 @@ from rpi_ws281x import PixelStrip, Color
 # RGB+CCT: 2x WS2811 IC pro LED-Gruppe (IC1=RGB, IC2=CW/WW)
 LED_COUNT = 300        # Anzahl ICs gesamt (= 2 × physische LED-Gruppen)
 LED_PIN = 18
-LED_FREQ_HZ = 800000
+LED_FREQ_HZ = 400000
 LED_DMA = 10
 LED_BRIGHTNESS = 128
 LED_INVERT = False
