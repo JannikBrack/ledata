@@ -20,7 +20,7 @@ NUM_GROUPS = LED_COUNT // 3  # 150 physische LED-Gruppen
 
 def set_all(r, g, b):
     for i in range(NUM_GROUPS):
-        strip.setPixelColor(i * 2,     Color(r, g, b))    # IC1: RGB
+        strip.setPixelColor(i,     Color(r, g, b))    # IC1: RGB
     strip.show()
 
 print("Test 1: Alle LEDs rot")
