@@ -18,7 +18,7 @@ for i in range(strip.numPixels()):
     strip.setPixelColor(i, Color(255, 255, 255))
 strip.show()
 
-time.sleep(2)
+time.sleep(200)
 
 # Alle LEDs ausschalten
 for i in range(strip.numPixels()):
