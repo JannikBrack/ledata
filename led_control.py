@@ -16,36 +16,27 @@ LED_CHANNEL = 0
 strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
 strip.begin()
 
-NUM_GROUPS = LED_COUNT // 2  # 150 physische LED-Gruppen
+NUM_GROUPS = LED_COUNT // 3  # 150 physische LED-Gruppen
 
-def set_all(r, g, b, cw, ww):
+def set_all(r, g, b):
     for i in range(NUM_GROUPS):
         strip.setPixelColor(i * 2,     Color(r, g, b))    # IC1: RGB
-        strip.setPixelColor(i * 2 + 1, Color(cw, ww, 0)) # IC2: CW, WW, ungenutzt
     strip.show()
 
 print("Test 1: Alle LEDs rot")
-set_all(255, 0, 0, 0, 0)
+set_all(255, 0, 0)
 time.sleep(2)
 
 print("Test 2: Alle LEDs grün")
-set_all(0, 255, 0, 0, 0)
+set_all(0, 255, 0)
 time.sleep(2)
 
 print("Test 3: Alle LEDs blau")
-set_all(0, 0, 255, 0, 0)
-time.sleep(2)
-
-print("Test 4: Alle LEDs warm weiß")
-set_all(0, 0, 0, 0, 255)
-time.sleep(2)
-
-print("Test 5: Alle LEDs kalt weiß")
-set_all(0, 0, 0, 255, 0)
+set_all(0, 0, 255)
 time.sleep(2)
 
 print("Test 6: Alle LEDs aus")
-set_all(0, 0, 0, 0, 0)
+set_all(0, 0, 0)
 time.sleep(1)
 
 print("Test 7: LED für LED durchlaufen")
@@ -53,6 +44,6 @@ for i in range(NUM_GROUPS):
     strip.setPixelColor(i * 2, Color(255, 255, 255))
     strip.show()
     time.sleep(0.05)
-set_all(0, 0, 0, 0, 0)
+set_all(0, 0, 0)
 
 print("Fertig!")
