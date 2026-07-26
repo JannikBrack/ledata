@@ -2,10 +2,10 @@ import time
 import board
 import neopixel_spi as neopixel
 
-NUM_PIXELS = 50
+NUM_PIXELS = 100
 PIXEL_ORDER = neopixel.GRB
 COLORS = (0xFF0000, 0xFFFF00, 0x00FF00, 0x00FFFF, 0x0000FF, 0xFF00FF)
-DELAY = 0.2
+DELAY = 2
 
 spi = board.SPI()
 
