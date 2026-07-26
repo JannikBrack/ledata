@@ -1,23 +1,26 @@
+#!/usr/bin/env python3
+from rpi_ws281x import PixelStrip, Color
 import time
-import board
-import neopixel_spi as neopixel
 
-NUM_PIXELS = 100
-PIXEL_ORDER = neopixel.GRB
-COLORS = (0xFF0000, 0xFFFF00, 0x00FF00, 0x00FFFF, 0x0000FF, 0xFF00FF)
-DELAY = 2
+LED_COUNT = 100
+LED_PIN = 18
+LED_FREQ_HZ = 800000
+LED_DMA = 10
+LED_BRIGHTNESS = 150
+LED_INVERT = False
+LED_CHANNEL = 0
 
-spi = board.SPI()
+strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+strip.begin()
 
-pixels = neopixel.NeoPixel_SPI(spi,
-                                NUM_PIXELS,
-                                pixel_order=PIXEL_ORDER,
-                                auto_write=False)
+# Alle LEDs weiß einschalten
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(255, 255, 255))
+strip.show()
 
-while True:
-    for color in COLORS:
-        for i in range(NUM_PIXELS):
-            pixels[i] = color
-            pixels.show()
-            time.sleep(DELAY)
-            pixels.fill(0)
+time.sleep(2)
+
+# Alle LEDs ausschalten
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 0, 0))
+strip.show()
