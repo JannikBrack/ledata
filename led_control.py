@@ -7,7 +7,7 @@ import sys
 
 # === LED strip setup ===
 LED_COUNT = 100        # LED quantity
-LED_PIN = 10          # GPIO18
+LED_PIN = 18          # GPIO18
 LED_FREQ_HZ = 800000  # signal frequency（Hz）
 LED_DMA = 10          # DMA channel
 LED_BRIGHTNESS = 150  # brightness（0-255）
