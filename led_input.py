@@ -17,7 +17,8 @@ LED_CHANNEL = 0
 WHITE = (255, 255, 255)
 
 # Vordefinierte Bereichslängen
-COUNTS = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1]
+#COUNTS = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1] # Linie 5
+COUNTS = [9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4] # Linie 1
 
 
 def clear_strip(strip):
