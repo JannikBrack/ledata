@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import random
 from rpi_ws281x import PixelStrip, Color
 
 # LED strip configuration (same as led_control.py)
@@ -8,11 +9,11 @@ LED_COUNT = 300
 LED_PIN = 18
 LED_FREQ_HZ = 800000
 LED_DMA = 10
-LED_BRIGHTNESS = 50
+LED_BRIGHTNESS = 100
 LED_INVERT = False
 LED_CHANNEL = 0
 
-RED   = (255, 0, 0)
+
 WHITE = (255, 255, 255)
 
 # Vordefinierte Bereichslängen
@@ -26,14 +27,21 @@ def clear_strip(strip):
 
 
 def apply_segments(strip, counts):
-    """Setzt alle Segmente: erste LED weiß, Rest rot."""
+    """Setzt alle Segmente auf den Strip: erste LED weiß, Rest Segmentfarbe."""
     pos = 0
+    prev_color = None
     for count in counts:
+        color = (255, 0,   0)
+        # Erste LED des Bereichs: weiß
         strip.setPixelColor(pos, Color(*WHITE))
+        # Restliche LEDs des Bereichs: Segmentfarbe
         for i in range(pos + 1, pos + count):
-            strip.setPixelColor(i, Color(*RED))
-        print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  (Anzahl: {count:>3})  | LED {pos} = weiß, Rest rot')
+            strip.setPixelColor(i, Color(*color))
+        print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  '
+              f'(Anzahl: {count:>3})  '
+              f'Farbe: RGB{color}  |  LED {pos} = weiß')
         pos += count
+        prev_color = color
     strip.show()
 
 
