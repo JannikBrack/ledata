@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import time
 from rpi_ws281x import PixelStrip, Color
 
 # LED strip configuration (same as led_control.py)
@@ -36,19 +37,21 @@ def clear_strip(strip):
     strip.show()
 
 
-def apply_segments(strip, counts):
-    """Setzt alle Segmente auf den Strip: erste LED weiß, Rest Segmentfarbe."""
+def apply_segments_animated(strip, counts, delay_ms=18):
+    """Blendet die Linie Segment für Segment ein: erste LED weiß, Rest rot."""
     pos = 0
     for count in counts:
-        color = (255, 0, 0)
+        # Ersten LED des Segments: weiß
         strip.setPixelColor(pos, Color(*WHITE))
+        strip.show()
+        time.sleep(delay_ms / 1000.0)
+        # Restliche LEDs: rot, einzeln einblenden
         for i in range(pos + 1, pos + count):
-            strip.setPixelColor(i, Color(*color))
-        print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  '
-              f'(Anzahl: {count:>3})  '
-              f'Farbe: RGB{color}  |  LED {pos} = weiß')
+            strip.setPixelColor(i, Color(255, 0, 0))
+            strip.show()
+            time.sleep(delay_ms / 1000.0)
+        print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  (Anzahl: {count:>3})')
         pos += count
-    strip.show()
 
 
 if __name__ == '__main__':
@@ -76,7 +79,7 @@ if __name__ == '__main__':
             total = sum(counts)
             print(f'\n{name} – {len(counts)} Bereiche, {total} LEDs gesamt:\n')
             clear_strip(strip)
-            apply_segments(strip, counts)
+            apply_segments_animated(strip, counts)
             print(f'\nFertig. {total} von {LED_COUNT} LEDs belegt.\n')
 
     except KeyboardInterrupt:
