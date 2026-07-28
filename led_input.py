@@ -15,14 +15,7 @@ LED_CHANNEL = 0
 
 # Farbpalette – kein Weiß (Weiß ist ausschließlich für die erste LED jedes Bereichs reserviert)
 PALETTE = [
-    (255, 0,   0),    # Rot
-    (0,   200, 0),    # Grün
-    (0,   0,   255),  # Blau
-    (255, 140, 0),    # Orange
-    (128, 0,   128),  # Lila
-    (0,   220, 220),  # Cyan
-    (255, 0,   180),  # Pink
-    (200, 200, 0),    # Gelb
+    (255, 0, 0),    # Rot
 ]
 
 WHITE = (255, 255, 255)
