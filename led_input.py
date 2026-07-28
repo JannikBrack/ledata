@@ -28,7 +28,7 @@ PALETTE = [
 WHITE = (255, 255, 255)
 
 # Vordefinierte Bereichslängen
-COUNTS = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7]
+COUNTS = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1]
 
 
 def clear_strip(strip):
