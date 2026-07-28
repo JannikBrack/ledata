@@ -40,8 +40,8 @@ def clear_strip(strip):
 def apply_segments_animated(strip, counts, delay_ms=18):
     """Blendet die Linie Segment für Segment ein: erste LED weiß, Rest rot."""
     pos = 0
-    for count in counts:
-        if count < 5:
+    for idx, count in enumerate(counts):
+        if count < 5 and idx < len(counts) - 1:
             count = 5
         # Ersten LED des Segments: weiß
         strip.setPixelColor(pos, Color(*WHITE))
