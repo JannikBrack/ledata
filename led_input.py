@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import random
 from rpi_ws281x import PixelStrip, Color
 
 # LED strip configuration (same as led_control.py)
