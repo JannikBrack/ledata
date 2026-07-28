@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import random
 from rpi_ws281x import PixelStrip, Color
 
 # LED strip configuration (same as led_control.py)
@@ -12,6 +13,23 @@ LED_BRIGHTNESS = 255
 LED_INVERT = False
 LED_CHANNEL = 0
 
+# Farbpalette – kein Weiß (Weiß ist ausschließlich für die erste LED jedes Bereichs reserviert)
+PALETTE = [
+    (255, 0,   0),    # Rot
+    (0,   200, 0),    # Grün
+    (0,   0,   255),  # Blau
+    (255, 140, 0),    # Orange
+    (128, 0,   128),  # Lila
+    (0,   220, 220),  # Cyan
+    (255, 0,   180),  # Pink
+    (200, 200, 0),    # Gelb
+]
+
+WHITE = (255, 255, 255)
+
+# Vordefinierte Bereichslängen
+COUNTS = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7]
+
 
 def clear_strip(strip):
     for i in range(strip.numPixels()):
@@ -19,84 +37,71 @@ def clear_strip(strip):
     strip.show()
 
 
-def parse_rgb(rgb_input):
-    """Parse 'R G B' or 'R,G,B' string into (r, g, b) tuple. Returns None on error."""
-    parts = rgb_input.replace(',', ' ').split()
-    if len(parts) != 3:
-        return None
-    try:
-        r, g, b = int(parts[0]), int(parts[1]), int(parts[2])
-    except ValueError:
-        return None
-    if not all(0 <= v <= 255 for v in (r, g, b)):
-        return None
-    return r, g, b
+def next_color(previous):
+    """Wählt zufällig eine Farbe aus der Palette, die nicht gleich 'previous' ist."""
+    available = [c for c in PALETTE if c != previous]
+    return random.choice(available)
 
 
-def light_segment(strip, start, count, r, g, b):
-    for i in range(start, start + count):
-        strip.setPixelColor(i, Color(r, g, b))
+def apply_segments(strip, counts):
+    """Setzt alle Segmente auf den Strip: erste LED weiß, Rest Segmentfarbe."""
+    pos = 0
+    prev_color = None
+    for count in counts:
+        color = next_color(prev_color)
+        # Erste LED des Bereichs: weiß
+        strip.setPixelColor(pos, Color(*WHITE))
+        # Restliche LEDs des Bereichs: Segmentfarbe
+        for i in range(pos + 1, pos + count):
+            strip.setPixelColor(i, Color(*color))
+        print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  '
+              f'(Anzahl: {count:>3})  '
+              f'Farbe: RGB{color}  |  LED {pos} = weiß')
+        pos += count
+        prev_color = color
     strip.show()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Interaktive LED-Steuerung mit kumulativem Streifen')
+    parser = argparse.ArgumentParser(description='LED-Steuerung mit automatischer Farbwahl')
     parser.add_argument('-c', '--clear', action='store_true', help='LEDs beim Beenden ausschalten')
     args = parser.parse_args()
 
     strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
     strip.begin()
 
-    current_position = 0
-
-    print('=== LED Interaktiv-Steuerung ===')
-    print('Eingabe pro Runde: Anzahl LEDs und Farbe als R G B (z.B. "255 0 0")')
+    print('=== LED Automatische Farbsteuerung ===')
+    print(f'Vordefinierte Bereiche: {COUNTS}  (Summe: {sum(COUNTS)} LEDs)')
+    print('Eingabe: LED-Anzahlen der Bereiche, getrennt durch Leerzeichen')
+    print('Einfach Enter druecken um die vordefinierten Bereiche zu verwenden.')
     print('Beenden mit Ctrl-C\n')
 
     try:
         while True:
-            remaining = LED_COUNT - current_position
-
-            if remaining == 0:
-                print(f'\nAlle {LED_COUNT} LEDs sind belegt.')
-                answer = input('Reset (alle LEDs aus, von vorne beginnen)? [j/n]: ').strip().lower()
-                if answer == 'j':
-                    clear_strip(strip)
-                    current_position = 0
-                    print('Strip zurückgesetzt.\n')
+            raw = input('LED-Anzahlen (Enter = Standard): ').strip()
+            if not raw:
+                counts = COUNTS
+                print(f'  Verwende Standard: {counts}')
+            else:
+                try:
+                    counts = [int(x) for x in raw.split()]
+                except ValueError:
+                    print('  Fehler: Bitte nur ganze Zahlen eingeben.\n')
                     continue
-                else:
-                    print('Programm beendet.')
-                    break
 
-            print(f'Position {current_position}/{LED_COUNT}  (noch {remaining} LEDs frei)')
-
-            # --- Anzahl ---
-            raw_count = input('Anzahl LEDs: ').strip()
-            try:
-                count = int(raw_count)
-            except ValueError:
-                print('  Fehler: Bitte eine ganze Zahl eingeben.\n')
-                continue
-            if count <= 0:
-                print('  Fehler: Anzahl muss groesser als 0 sein.\n')
-                continue
-            if count > remaining:
-                print(f'  Hinweis: Nur noch {remaining} LEDs frei – verwende {remaining} statt {count}.')
-                count = remaining
-
-            # --- Farbe ---
-            raw_color = input('Farbe (R G B): ').strip()
-            rgb = parse_rgb(raw_color)
-            if rgb is None:
-                print('  Fehler: Bitte drei Werte 0-255 eingeben, z.B. "255 128 0".\n')
+            if any(c <= 0 for c in counts):
+                print('  Fehler: Alle Anzahlen muessen groesser als 0 sein.\n')
                 continue
 
-            r, g, b = rgb
-            light_segment(strip, current_position, count, r, g, b)
-            current_position += count
+            total = sum(counts)
+            if total > LED_COUNT:
+                print(f'  Fehler: Summe aller Bereiche ({total}) ueberschreitet den Streifen ({LED_COUNT} LEDs).\n')
+                continue
 
-            print(f'  -> LEDs {current_position - count} bis {current_position - 1} leuchten in RGB({r}, {g}, {b})\n')
+            print(f'\n{len(counts)} Bereiche, {total} LEDs gesamt:\n')
+            clear_strip(strip)
+            apply_segments(strip, counts)
+            print(f'\nFertig. {total} von {LED_COUNT} LEDs belegt.\n')
 
     except KeyboardInterrupt:
         print('\nAbbruch.')
