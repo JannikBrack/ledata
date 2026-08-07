@@ -1,3 +1,5 @@
+import time
+
 from rpi_ws281x import PixelStrip, Color
 
 class Train():
@@ -138,9 +140,11 @@ class Controller():
                     self._strip.setPixelColor(i, Color(255, 0, 0))
         self._strip.show()
 
+
     def start(self):
         for _ in range(0, 500):
             for route in self._routes:
                 route.move_trains()
                 self.show(route)
+                time.sleep(self._delay / 1000)
                 
