@@ -114,7 +114,7 @@ class Route():
 
 class Controller():
     _routes: list[Route]
-    _delay: int = 200
+    _delay: int = 10
     _strip: PixelStrip
 
     def __init__(self, routes, strip) -> None:
