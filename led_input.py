@@ -38,7 +38,7 @@ def clear_strip(strip):
 
 
 def apply_segments_animated(strip, counts, delay_ms=18):
-    """Blendet die Linie Segment für Segment ein: erste LED weiß, Rest rot."""
+    """Blendet die Linie Segment für Segment ein: nur erste LED weiß, Rest aus."""
     pos = 0
     for idx, count in enumerate(counts):
         if count < 6 and idx < len(counts) - 1:
@@ -47,11 +47,10 @@ def apply_segments_animated(strip, counts, delay_ms=18):
         strip.setPixelColor(pos, Color(*WHITE))
         strip.show()
         time.sleep(delay_ms / 1000.0)
-        # Restliche LEDs: rot, einzeln einblenden
+        # Restliche LEDs bleiben aus
         for i in range(pos + 1, pos + count):
-            strip.setPixelColor(i, Color(255, 0, 0))
-            strip.show()
-            time.sleep(delay_ms / 1000.0)
+            strip.setPixelColor(i, Color(0, 0, 0))
+        strip.show()
         print(f'  Bereich LED {pos:>3} – {pos + count - 1:<3}  (Anzahl: {count:>3})')
         pos += count
 
