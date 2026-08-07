@@ -4,7 +4,7 @@ linie_1 = [9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4, 1] #
 #linie_4 = [5, 5, 4, 5, 2, 9, 14, 8, 8, 7, 6, 5, 12, 13, 6, 5, 6, 7, 9, 1]   # Linie 4 Messe Anfang
 #linie_5 = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1] # Linie 5 Rieselfeld anfang
 
-from classes import Route, Train
+from classes import Route, Train, Controller
 from rpi_ws281x import PixelStrip
 
 
@@ -23,6 +23,12 @@ if __name__ == "__main__":
 
     train = Train(0,1,0)
     route = Route(0, linie_1, [train], WHITE, 0)
+
+    strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+
+
+    controller = Controller([route], strip)
+    controller.start()
 
 
 # ----------
