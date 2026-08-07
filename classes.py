@@ -140,11 +140,15 @@ class Controller():
                     self._strip.setPixelColor(i, Color(255, 0, 0))
         self._strip.show()
 
+    def reset_strip(self):
+        for i in range(self._strip.numPixels()):
+            self._strip.setPixelColor(i, Color(0, 0, 0))
 
     def start(self):
         for _ in range(0, 500):
             for route in self._routes:
                 route.move_trains()
+                self.reset_strip()
                 self.show(route)
                 time.sleep(self._delay / 1000)
                 
