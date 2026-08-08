@@ -13,6 +13,7 @@ class Train():
     minute_value: int # the number of ticks needet to complete a hole minute
     travel_time_in_minutes: float # time the train needs between two stations
     at_station: bool # True while the train is standing in a station
+    station_stop_in_seconds: float = 10.0 # TEMPORAER: Haltezeit an einer Station
 
     def __init__(self, id, direction, position, travel_time_in_minutes=1.0) -> None:
         self.id = id
@@ -74,6 +75,9 @@ class Train():
             distance = route.distance_to_next_station(self.position, self.direction)
         self.distance = distance
         self.calculate_arrival(self.travel_time_in_minutes)
+        if self.at_station:
+            # TEMPORAER: der Zug haelt erst eine Weile in der Station
+            self.ticks_to_move += round(self.station_stop_in_seconds * self.minute_value / 60)
 
     def calculate_arrival(self, duration_in_minutes):
         if self.distance <= 0:
@@ -199,18 +203,22 @@ class Controller():
         return (self.ticks // ticks_per_blink) % 2 == 0
 
     def draw(self, route: Route):
-        for station in route.stations:
-            self.set_pixel(station.position, Color(255, 255, 255))
-
         blink_on = self.is_blink_on()
+        stopped_positions = {train.position for train in route.trains if train.at_station}
+
+        for station in route.stations:
+            if station.position in stopped_positions:
+                # TEMPORAER: waehrend der Haltezeit blinkt die Haltestelle rot
+                self.set_pixel(station.position, Color(255, 0, 0) if blink_on else Color(0, 0, 0))
+            else:
+                self.set_pixel(station.position, Color(255, 255, 255))
+
         for train in route.trains:
             if train.at_station:
-                # in a station the train is only a single blinking dot
-                if blink_on:
-                    self.set_pixel(train.position, Color(*route.color))
-            else:
-                for position in train.occupied_positions():
-                    self.set_pixel(position, Color(*route.color))
+                # in a station the train is only the single blinking dot of the station
+                continue
+            for position in train.occupied_positions():
+                self.set_pixel(position, Color(*route.color))
 
     def set_pixel(self, position, color):
         if 0 <= position < self.strip.numPixels():
