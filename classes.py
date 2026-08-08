@@ -6,12 +6,22 @@ class Train():
     id: int
     length: int = 2
     direction: int
+    distance: int # distance to next station
     position: int
+    ticks_to_move: int # countdown until the next led step
+    ticks_per_led: int # ticks the train needs for a single led step
+    minute_value: int # the number of ticks needet to complete a hole minute
+    travel_time_in_minutes: float # time the train needs between two stations
 
-    def __init__(self, id, direction, position) -> None:
+    def __init__(self, id, direction, position, travel_time_in_minutes=1.0) -> None:
         self.id = id
         self.direction = direction
         self.position = position
+        self.travel_time_in_minutes = travel_time_in_minutes
+        self.distance = 0
+        self.minute_value = 600
+        self.ticks_per_led = 1
+        self.ticks_to_move = 1
 
     def __str__(self) -> str:
         return (
@@ -23,13 +33,22 @@ class Train():
             ")"
         )
 
-    def move(self,start_of_route, end_of_route):
+    def move(self, route):
+        self.ticks_to_move -= 1
+        if self.ticks_to_move > 0:
+            return
+
         next_move = self.position + (1 * self.direction)
-        if next_move < start_of_route or next_move > end_of_route:
+        if next_move < route.start_of_route or next_move > route.end_of_route:
             self.switch_direction()
-            self.position = self.position + (1 * self.direction)
+            next_move = self.position + (1 * self.direction)
+        self.position = next_move
+
+        # a new schedule is only needed once the train reaches the next station
+        if route.is_station(self.position):
+            self.refresh_schedule(route)
         else:
-            self.position = next_move
+            self.ticks_to_move = self.ticks_per_led
 
         print(self)
 
@@ -38,6 +57,25 @@ class Train():
             self.direction = 1
         elif self.direction == 1:
             self.direction = -1    
+
+    def refresh_schedule(self, route):
+        distance = route.distance_to_next_station(self.position, self.direction)
+        if distance == 0:
+            # no station left in front of the train -> it is at the end of the route
+            self.switch_direction()
+            distance = route.distance_to_next_station(self.position, self.direction)
+        self.distance = distance
+        self.calculate_arrival(self.travel_time_in_minutes)
+
+    def calculate_arrival(self, duration_in_minutes):
+        if self.distance <= 0:
+            self.ticks_per_led = 1
+        else:
+            self.ticks_per_led = max(1, round((duration_in_minutes * self.minute_value) / self.distance))
+        self.ticks_to_move = self.ticks_per_led
+
+    def calculate_delay(self, delay_in_minutes):
+        self.ticks_to_move += round(delay_in_minutes * self.minute_value)
 
 
 class Station():
@@ -108,14 +146,29 @@ class Route():
             ")"
         )
 
+    def is_station(self, position) -> bool:
+        return any(station.position == position for station in self.stations)
+
+    def distance_to_next_station(self, position, direction) -> int:
+        positions_ahead = [
+            station.position
+            for station in self.stations
+            if (station.position - position) * direction > 0
+        ]
+        if not positions_ahead:
+            return 0
+        next_position = min(positions_ahead) if direction > 0 else max(positions_ahead)
+        return abs(next_position - position)
+
     def move_trains(self):
         for train in self.trains:
-            train.move(self.start_of_route, self.end_of_route)
+            train.move(self)
 
 class Controller():
     routes: list[Route]
-    delay: int = 50
+    tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     strip: PixelStrip
+    stopped: bool = True
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -125,30 +178,43 @@ class Controller():
         return (
             "Controller("
             f"routes=[{', '.join(str(route) for route in self.routes)}], "
-            f"delay={self.delay}, "
+            f"tickinterval={self.tickinterval}, "
             f"strip_pixels={self.strip.numPixels()}"
             ")"
         )
 
-    def show(self, route: Route):
+    def draw(self, route: Route):
         for i in range(self.strip.numPixels()):
             for station in route.stations:
                 if station.position == i:
                     self.strip.setPixelColor(i, Color(255, 255, 255))
             for train in route.trains:
                 if train.position == i:
-                    self.strip.setPixelColor(i, Color(255, 0, 0))
-        self.strip.show()
+                    self.strip.setPixelColor(i, Color(*route.color))
 
     def reset_strip(self):
         for i in range(self.strip.numPixels()):
             self.strip.setPixelColor(i, Color(0, 0, 0))
 
     def start(self):
-        for _ in range(0, 500):
+        self.stopped = False
+        minute_value = round(60000 / self.tickinterval)
+        for route in self.routes:
+            for train in route.trains:
+                train.minute_value = minute_value
+                train.refresh_schedule(route)
+        while not self.stopped:
+            self.reset_strip()
             for route in self.routes:
                 route.move_trains()
-                self.reset_strip()
-                self.show(route)
-                time.sleep(self.delay / 1000)
-                
+                self.draw(route)
+            self.strip.show()
+            time.sleep(self.tickinterval / 1000)
+
+    def stop(self):
+        self.stopped = True
+
+
+# Kontroller move requests (intervall mäßig) und der Zug macht die Valedierungen jeh nach dem ob er sich bewegen darf anhand der ausgerechneten 
+# led/time variable, welche berechnet wird um zu definieren wie lange der zug brauchen darf um an der nächsten haltestelle anzukommen
+# definierter Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 

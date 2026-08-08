@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "description": "Simulierter Fahrplan: 'meta' enthaelt die komplette Konfiguration, 'fahrplan' die Fahrzeiten zwischen zwei benachbarten Haltestellen.",
+    "tickinterval_ms": 100,
+    "hinweis": "travel_time_seconds gilt fuer die Fahrt von 'from' nach 'to' (Richtung +1). travel_time_seconds_reverse gilt fuer die Gegenrichtung (-1). Ticks = travel_time_seconds * 1000 / tickinterval_ms.",
+    "led": {
+      "count": 300,
+      "pin": 18,
+      "freq_hz": 800000,
+      "dma": 10,
+      "brightness": 100,
+      "invert": false,
+      "channel": 0
+    },
+    "station_color": [255, 255, 255],
+    "routes": [
+      {
+        "id": 0,
+        "name": "Linie 1",
+        "color": [255, 0, 0],
+        "start_of_route": 0,
+        "led_layout": [9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4, 1],
+        "default_travel_time_seconds": 12,
+        "trains": [
+          { "id": 0, "direction": 1, "start_station": 0 },
+          { "id": 1, "direction": -1, "start_station": 12 }
+        ],
+        "stations": [
+          { "id": 0, "name": "Haltestelle 00", "position": 0 },
+          { "id": 1, "name": "Haltestelle 01", "position": 9 },
+          { "id": 2, "name": "Haltestelle 02", "position": 16 },
+          { "id": 3, "name": "Haltestelle 03", "position": 29 },
+          { "id": 4, "name": "Haltestelle 04", "position": 34 },
+          { "id": 5, "name": "Haltestelle 05", "position": 39 },
+          { "id": 6, "name": "Haltestelle 06", "position": 47 },
+          { "id": 7, "name": "Haltestelle 07", "position": 53 },
+          { "id": 8, "name": "Haltestelle 08", "position": 67 },
+          { "id": 9, "name": "Haltestelle 09", "position": 75 },
+          { "id": 10, "name": "Haltestelle 10", "position": 83 },
+          { "id": 11, "name": "Haltestelle 11", "position": 90 },
+          { "id": 12, "name": "Haltestelle 12", "position": 97 },
+          { "id": 13, "name": "Haltestelle 13", "position": 102 },
+          { "id": 14, "name": "Haltestelle 14", "position": 105 },
+          { "id": 15, "name": "Haltestelle 15", "position": 108 },
+          { "id": 16, "name": "Haltestelle 16", "position": 112 },
+          { "id": 17, "name": "Haltestelle 17", "position": 116 },
+          { "id": 18, "name": "Haltestelle 18", "position": 120 },
+          { "id": 19, "name": "Haltestelle 19", "position": 125 },
+          { "id": 20, "name": "Haltestelle 20", "position": 129 },
+          { "id": 21, "name": "Haltestelle 21", "position": 133 }
+        ]
+      }
+    ]
+  },
+  "fahrplan": [
+    {
+      "route_id": 0,
+      "segments": [
+        { "from": 0, "to": 1, "distance_leds": 9, "travel_time_seconds": 14, "travel_time_seconds_reverse": 12 },
+        { "from": 1, "to": 2, "distance_leds": 7, "travel_time_seconds": 10, "travel_time_seconds_reverse": 10 },
+        { "from": 2, "to": 3, "distance_leds": 13, "travel_time_seconds": 22, "travel_time_seconds_reverse": 25 },
+        { "from": 3, "to": 4, "distance_leds": 5, "travel_time_seconds": 8, "travel_time_seconds_reverse": 7 },
+        { "from": 4, "to": 5, "distance_leds": 5, "travel_time_seconds": 6, "travel_time_seconds_reverse": 9 },
+        { "from": 5, "to": 6, "distance_leds": 8, "travel_time_seconds": 15, "travel_time_seconds_reverse": 13 },
+        { "from": 6, "to": 7, "distance_leds": 6, "travel_time_seconds": 9, "travel_time_seconds_reverse": 9 },
+        { "from": 7, "to": 8, "distance_leds": 14, "travel_time_seconds": 28, "travel_time_seconds_reverse": 24 },
+        { "from": 8, "to": 9, "distance_leds": 8, "travel_time_seconds": 12, "travel_time_seconds_reverse": 16 },
+        { "from": 9, "to": 10, "distance_leds": 8, "travel_time_seconds": 18, "travel_time_seconds_reverse": 14 },
+        { "from": 10, "to": 11, "distance_leds": 7, "travel_time_seconds": 11, "travel_time_seconds_reverse": 11 },
+        { "from": 11, "to": 12, "distance_leds": 7, "travel_time_seconds": 20, "travel_time_seconds_reverse": 17 },
+        { "from": 12, "to": 13, "distance_leds": 5, "travel_time_seconds": 7, "travel_time_seconds_reverse": 8 },
+        { "from": 13, "to": 14, "distance_leds": 3, "travel_time_seconds": 5, "travel_time_seconds_reverse": 6 },
+        { "from": 14, "to": 15, "distance_leds": 3, "travel_time_seconds": 10, "travel_time_seconds_reverse": 5 },
+        { "from": 15, "to": 16, "distance_leds": 4, "travel_time_seconds": 6, "travel_time_seconds_reverse": 6 },
+        { "from": 16, "to": 17, "distance_leds": 4, "travel_time_seconds": 13, "travel_time_seconds_reverse": 12 },
+        { "from": 17, "to": 18, "distance_leds": 4, "travel_time_seconds": 8, "travel_time_seconds_reverse": 8 },
+        { "from": 18, "to": 19, "distance_leds": 5, "travel_time_seconds": 16, "travel_time_seconds_reverse": 19 },
+        { "from": 19, "to": 20, "distance_leds": 4, "travel_time_seconds": 9, "travel_time_seconds_reverse": 7 },
+        { "from": 20, "to": 21, "distance_leds": 4, "travel_time_seconds": 21, "travel_time_seconds_reverse": 18 }
+      ]
+    }
+  ]
+}

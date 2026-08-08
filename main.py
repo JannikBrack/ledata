@@ -1,39 +1,71 @@
-linie_1 = [9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4, 1] # Linie 1 bei landwasser angefangen
-#linie_2 = [13, 4, 9, 4, 14, 9, 14, 8, 8, 7, 5, 5, 4, 4, 4, 4, 4, 3, 1] # Linie 2 Brühl anfang
-#linie_3 = [7, 9, 8, 5, 8, 10, 6, 14, 8, 8, 7, 7, 7, 9, 5, 8, 3, 3, 3, 2, 3, 1] # Linie 3 Munzinger Straße Anfang
-#linie_4 = [5, 5, 4, 5, 2, 9, 14, 8, 8, 7, 6, 5, 12, 13, 6, 5, 6, 7, 9, 1]   # Linie 4 Messe Anfang
-#linie_5 = [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1] # Linie 5 Rieselfeld anfang
+# Alle Konfigurationen (LED-Strip, Linien, Züge, Fahrzeiten) stehen in fahrplan.json
+
+# Wichtige information --------
+# Trains müssen auf bahnhöfen starten
+
+import json
+from pathlib import Path
 
 from classes import Route, Train, Controller
 from rpi_ws281x import PixelStrip
 
+CONFIG_PATH = Path(__file__).with_name("fahrplan.json")
+
+
+def load_config(path=CONFIG_PATH):
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def build_strip(led_config):
+    return PixelStrip(
+        led_config["count"],
+        led_config["pin"],
+        led_config["freq_hz"],
+        led_config["dma"],
+        led_config["invert"],
+        led_config["brightness"],
+        led_config["channel"],
+    )
+
+
+def build_route(route_config):
+    travel_time_in_minutes = route_config["default_travel_time_seconds"] / 60
+
+    # Die Startposition eines Zuges wird über die Haltestellen-Id angegeben
+    station_positions = {
+        station["id"]: station["position"] for station in route_config["stations"]
+    }
+
+    trains = [
+        Train(
+            id=train["id"],
+            direction=train["direction"],
+            position=station_positions[train["start_station"]],
+            travel_time_in_minutes=travel_time_in_minutes,
+        )
+        for train in route_config["trains"]
+    ]
+
+    return Route(
+        route_config["id"],
+        route_config["led_layout"],
+        trains,
+        tuple(route_config["color"]),
+        route_config["start_of_route"],
+    )
+
 
 if __name__ == "__main__":
-    LED_COUNT = 300
-    LED_PIN = 18
-    LED_FREQ_HZ = 800000
-    LED_DMA = 10
-    LED_BRIGHTNESS = 100
-    LED_INVERT = False
-    LED_CHANNEL = 0
+    config = load_config()
+    meta = config["meta"]
 
-
-    WHITE = (255, 255, 255)
-    RED = (255, 0, 0)
-
-    train = Train(0,1,0)
-    route = Route(0, linie_1, [train], WHITE, 0)
-
-    strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+    strip = build_strip(meta["led"])
     # Muss einmal aufgerufen werden, bevor setPixelColor()/show() benutzt wird
     strip.begin()
 
+    routes = [build_route(route_config) for route_config in meta["routes"]]
 
-    controller = Controller([route], strip)
+    controller = Controller(routes, strip)
+    controller.tickinterval = meta["tickinterval_ms"]
     controller.start()
-
-
-# ----------
-    # Tests
-    assert route.end_of_route == route.stations[-1].position
-    assert route.end_of_route - route.start_of_route + 1 == route.max_led_count
