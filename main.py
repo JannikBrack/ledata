@@ -1,12 +1,13 @@
 # Alle Konfigurationen (LED-Strip, Linien, Züge, Fahrzeiten) stehen in fahrplan.json
 
 # Wichtige information --------
-# Trains müssen auf bahnhöfen starten
+# Jeder Zug hat im Fahrplan einen eigenen Umlauf mit echten UTC-Zeiten
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
-from classes import Route, Train, Controller
+from classes import Route, Train, Trip, Stop, Controller
 from rpi_ws281x import PixelStrip
 
 CONFIG_PATH = Path(__file__).with_name("fahrplan.json")
@@ -29,21 +30,37 @@ def build_strip(led_config):
     )
 
 
-def build_route(route_config):
-    travel_time_in_minutes = route_config["default_travel_time_seconds"] / 60
+def build_trips(fahrplan, route_id, day):
+    # Alle Zeiten im Fahrplan sind echte UTC-Zeitstempel (ISO 8601) und werden
+    # beim Laden auf das angegebene Datum umdatiert
+    for entry in fahrplan:
+        if entry["route_id"] != route_id:
+            continue
+        trips = []
+        for trip_config in entry["trips"]:
+            trip = Trip(
+                id=trip_config["id"],
+                train_id=trip_config["train_id"],
+                stops=[
+                    Stop(stop["station_id"], stop["arrival"], stop["departure"])
+                    for stop in trip_config["stops"]
+                ],
+                delay_seconds=trip_config.get("delay_seconds", 0),
+                cycle_seconds=trip_config.get("cycle_seconds"),
+            )
+            trip.rebase_to_date(day)
+            trips.append(trip)
+        return trips
+    return []
 
-    # Die Startposition eines Zuges wird über die Haltestellen-Id angegeben
-    station_positions = {
-        station["id"]: station["position"] for station in route_config["stations"]
-    }
 
+def build_route(route_config, fahrplan, day):
+    trips = build_trips(fahrplan, route_config["id"], day)
+    trips_by_train = {trip.train_id: trip for trip in trips}
+
+    # Richtung und Startposition ergeben sich aus dem Umlauf und der aktuellen Uhrzeit
     trains = [
-        Train(
-            id=train["id"],
-            direction=train["direction"],
-            position=station_positions[train["start_station"]],
-            travel_time_in_minutes=travel_time_in_minutes,
-        )
+        Train(id=train["id"], trip=trips_by_train[train["id"]])
         for train in route_config["trains"]
     ]
 
@@ -53,19 +70,23 @@ def build_route(route_config):
         trains,
         tuple(route_config["color"]),
         route_config["start_of_route"],
+        trips,
     )
 
 
 if __name__ == "__main__":
     config = load_config()
     meta = config["meta"]
+    fahrplan = config["fahrplan"]
+    today = datetime.now(timezone.utc).date()
 
     strip = build_strip(meta["led"])
     # Muss einmal aufgerufen werden, bevor setPixelColor()/show() benutzt wird
     strip.begin()
 
-    routes = [build_route(route_config) for route_config in meta["routes"]]
+    routes = [build_route(route_config, fahrplan, today) for route_config in meta["routes"]]
 
     controller = Controller(routes, strip)
     controller.tickinterval = meta["tickinterval_ms"]
+    controller.resync_interval_seconds = meta.get("resync_interval_seconds", 60)
     controller.start()
