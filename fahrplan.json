@@ -23,7 +23,10 @@
         "default_travel_time_seconds": 12,
         "trains": [
           { "id": 0, "direction": 1, "start_station": 0 },
-          { "id": 1, "direction": -1, "start_station": 12 }
+          { "id": 1, "direction": -1, "start_station": 12 },
+          { "id": 2, "direction": 1, "start_station": 5},
+          { "id": 3, "direction": 1, "start_station": 8},
+          { "id": 4, "direction": -1, "start_station": 4}
         ],
         "stations": [
           { "id": 0, "name": "Haltestelle 00", "position": 0 },
