@@ -35,5 +35,5 @@ if __name__ == "__main__":
 
 # ----------
     # Tests
-    assert route._end_of_route == route._stations[-1]._position
-    assert route._end_of_route - route._start_of_route + 1 == route._max_led_count
+    assert route.end_of_route == route.stations[-1].position
+    assert route.end_of_route - route.start_of_route + 1 == route.max_led_count
