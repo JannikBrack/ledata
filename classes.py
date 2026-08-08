@@ -12,6 +12,7 @@ class Train():
     ticks_per_led: int # ticks the train needs for a single led step
     minute_value: int # the number of ticks needet to complete a hole minute
     travel_time_in_minutes: float # time the train needs between two stations
+    at_station: bool # True while the train is standing in a station
 
     def __init__(self, id, direction, position, travel_time_in_minutes=1.0) -> None:
         self.id = id
@@ -22,6 +23,7 @@ class Train():
         self.minute_value = 600
         self.ticks_per_led = 1
         self.ticks_to_move = 1
+        self.at_station = False
 
     def __str__(self) -> str:
         return (
@@ -42,15 +44,21 @@ class Train():
         if next_move < route.start_of_route or next_move > route.end_of_route:
             self.switch_direction()
             next_move = self.position + (1 * self.direction)
+
         self.position = next_move
+        self.at_station = route.is_station(self.position)
 
         # a new schedule is only needed once the train reaches the next station
-        if route.is_station(self.position):
+        if self.at_station:
             self.refresh_schedule(route)
         else:
             self.ticks_to_move = self.ticks_per_led
 
         print(self)
+
+    def occupied_positions(self) -> list[int]:
+        # the train covers its head position plus the leds behind it
+        return [self.position - offset * self.direction for offset in range(self.length)]
 
     def switch_direction(self):
         if self.direction == -1:
@@ -167,12 +175,15 @@ class Route():
 class Controller():
     routes: list[Route]
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
+    blink_interval: int = 800 # in ms | on/off time of a train standing in a station
+    ticks: int = 0
     strip: PixelStrip
     stopped: bool = True
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
         self.strip = strip
+        self.ticks = 0
 
     def __str__(self) -> str:
         return (
@@ -183,14 +194,27 @@ class Controller():
             ")"
         )
 
+    def is_blink_on(self) -> bool:
+        ticks_per_blink = max(1, round(self.blink_interval / self.tickinterval))
+        return (self.ticks // ticks_per_blink) % 2 == 0
+
     def draw(self, route: Route):
-        for i in range(self.strip.numPixels()):
-            for station in route.stations:
-                if station.position == i:
-                    self.strip.setPixelColor(i, Color(255, 255, 255))
-            for train in route.trains:
-                if train.position == i:
-                    self.strip.setPixelColor(i, Color(*route.color))
+        for station in route.stations:
+            self.set_pixel(station.position, Color(255, 255, 255))
+
+        blink_on = self.is_blink_on()
+        for train in route.trains:
+            if train.at_station:
+                # in a station the train is only a single blinking dot
+                if blink_on:
+                    self.set_pixel(train.position, Color(*route.color))
+            else:
+                for position in train.occupied_positions():
+                    self.set_pixel(position, Color(*route.color))
+
+    def set_pixel(self, position, color):
+        if 0 <= position < self.strip.numPixels():
+            self.strip.setPixelColor(position, color)
 
     def reset_strip(self):
         for i in range(self.strip.numPixels()):
@@ -202,8 +226,10 @@ class Controller():
         for route in self.routes:
             for train in route.trains:
                 train.minute_value = minute_value
+                train.at_station = route.is_station(train.position)
                 train.refresh_schedule(route)
         while not self.stopped:
+            self.ticks += 1
             self.reset_strip()
             for route in self.routes:
                 route.move_trains()
