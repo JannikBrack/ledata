@@ -21,15 +21,21 @@ def format_utc(moment: datetime) -> str:
 
 
 class Stop():
-    """Ein Halt im Fahrplan mit echter Ankunfts- und Abfahrtszeit in UTC."""
+    """Ein Halt im Fahrplan mit echter Ankunfts- und Abfahrtszeit in UTC.
+
+    delay_seconds ist die Verspaetung, die an diesem Halt entsteht. Sie wirkt
+    kumulativ, verschiebt also auch alle folgenden Halte des Umlaufs.
+    """
     station_id: int
     arrival: datetime
     departure: datetime
+    delay_seconds: float
 
-    def __init__(self, station_id, arrival, departure) -> None:
+    def __init__(self, station_id, arrival, departure, delay_seconds=0.0) -> None:
         self.station_id = station_id
         self.arrival = parse_utc(arrival)
         self.departure = parse_utc(departure)
+        self.delay_seconds = float(delay_seconds)
 
     @property
     def dwell_seconds(self) -> float:
@@ -42,7 +48,8 @@ class Stop():
             f"station_id={self.station_id}, "
             f"arrival={format_utc(self.arrival)}, "
             f"departure={format_utc(self.departure)}, "
-            f"dwell_seconds={self.dwell_seconds:.0f}"
+            f"dwell_seconds={self.dwell_seconds:.0f}, "
+            f"delay_seconds={self.delay_seconds:.0f}"
             ")"
         )
 
@@ -52,19 +59,18 @@ class Trip():
 
     Der Umlauf laeuft von der ersten bis zur letzten Station und wieder zurueck.
     Nach cycle_seconds beginnt er von vorne, deshalb steht die Startstation nur
-    einmal (am Anfang) in der Liste.
+    einmal (am Anfang) in der Liste. Verspaetungen stehen an den einzelnen
+    Halten und werden in der Wendezeit am Zyklusende wieder aufgeholt.
     """
     id: str
     train_id: int
     stops: list[Stop]
-    delay_seconds: float
     cycle_seconds: float
 
-    def __init__(self, id, train_id, stops, delay_seconds=0.0, cycle_seconds=None) -> None:
+    def __init__(self, id, train_id, stops, cycle_seconds=None) -> None:
         self.id = id
         self.train_id = train_id
         self.stops = stops
-        self.delay_seconds = delay_seconds
         if cycle_seconds:
             self.cycle_seconds = float(cycle_seconds)
         else:
@@ -76,7 +82,7 @@ class Trip():
             f"id={self.id}, "
             f"train_id={self.train_id}, "
             f"stops={len(self.stops)}, "
-            f"delay_seconds={self.delay_seconds:.0f}, "
+            f"delay_seconds={self.total_delay.total_seconds():.0f}, "
             f"cycle_seconds={self.cycle_seconds:.0f}"
             ")"
         )
@@ -101,14 +107,23 @@ class Trip():
         return timedelta(seconds=self.cycle_seconds)
 
     @property
+    def total_delay(self) -> timedelta:
+        return self.delay_at(len(self.stops) - 1)
+
+    @property
     def start_time(self) -> datetime:
         return self.arrival_at(0)
 
+    def delay_at(self, index) -> timedelta:
+        """Summe aller Verspaetungen bis einschliesslich Halt 'index'."""
+        seconds = sum(stop.delay_seconds for stop in self.stops[:index + 1])
+        return timedelta(seconds=seconds)
+
     def arrival_at(self, index) -> datetime:
-        return self.stops[index].arrival + timedelta(seconds=self.delay_seconds)
+        return self.stops[index].arrival + self.delay_at(index)
 
     def departure_at(self, index) -> datetime:
-        return self.stops[index].departure + timedelta(seconds=self.delay_seconds)
+        return self.stops[index].departure + self.delay_at(index)
 
     def dwell_seconds_at(self, index) -> float:
         return self.stops[index].dwell_seconds
@@ -133,12 +148,16 @@ class Trip():
             if now < arrival:
                 previous = index - 1
                 if previous < 0:
-                    return last, "fahrend", self.departure_at(last) + offset - self.cycle, arrival
+                    begin = self.departure_at(last) + offset - self.cycle
+                    return last, "fahrend", min(begin, arrival), arrival
                 return previous, "fahrend", self.departure_at(previous) + offset, arrival
             if now < self.departure_at(index) + offset:
                 return index, "haltend", arrival, self.departure_at(index) + offset
         # nach der letzten Abfahrt faehrt der Zug zurueck zum Start des naechsten Zyklus
-        return last, "fahrend", self.departure_at(last) + offset, self.arrival_at(0) + offset + self.cycle
+        begin = self.departure_at(last) + offset
+        end = self.arrival_at(0) + offset + self.cycle
+        # bei Verspaetung groesser als die Wendezeit bleibt keine Zeit fuer die Rueckfahrt
+        return last, "fahrend", begin, max(begin, end)
 
 
 class Train():
@@ -243,7 +262,7 @@ class Train():
         self.distance = abs(self.target_position - self.position)
         self.direction = 1 if self.target_position >= self.position else -1
         # Fahrzeit ergibt sich aus der Ankunftszeit am naechsten Halt
-        self.set_pace((arrival - departure).total_seconds(), self.distance)
+        self.set_pace(max(0.0, (arrival - departure).total_seconds()), self.distance)
 
     def sync_to_time(self, route, now):
         """Setzt den Zug auf die Position, die zur aktuellen Uhrzeit gehoert."""

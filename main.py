@@ -1,4 +1,4 @@
-# Alle Konfigurationen (LED-Strip, Linien, Züge, Fahrzeiten) stehen in fahrplan.json
+# meta.json enthaelt die Konfiguration (LED-Strip, Linien, Zuege), fahrplan.json die Umlaeufe
 
 # Wichtige information --------
 # Jeder Zug hat im Fahrplan einen eigenen Umlauf mit echten UTC-Zeiten
@@ -10,10 +10,11 @@ from pathlib import Path
 from classes import Route, Train, Trip, Stop, Controller
 from rpi_ws281x import PixelStrip
 
-CONFIG_PATH = Path(__file__).with_name("fahrplan.json")
+META_PATH = Path(__file__).with_name("meta.json")
+FAHRPLAN_PATH = Path(__file__).with_name("fahrplan.json")
 
 
-def load_config(path=CONFIG_PATH):
+def load_json(path):
     with open(path, "r", encoding="utf-8") as file:
         return json.load(file)
 
@@ -42,10 +43,14 @@ def build_trips(fahrplan, route_id, day):
                 id=trip_config["id"],
                 train_id=trip_config["train_id"],
                 stops=[
-                    Stop(stop["station_id"], stop["arrival"], stop["departure"])
+                    Stop(
+                        stop["station_id"],
+                        stop["arrival"],
+                        stop["departure"],
+                        stop.get("delay_in_sec", 0),
+                    )
                     for stop in trip_config["stops"]
                 ],
-                delay_seconds=trip_config.get("delay_seconds", 0),
                 cycle_seconds=trip_config.get("cycle_seconds"),
             )
             trip.rebase_to_date(day)
@@ -75,9 +80,8 @@ def build_route(route_config, fahrplan, day):
 
 
 if __name__ == "__main__":
-    config = load_config()
-    meta = config["meta"]
-    fahrplan = config["fahrplan"]
+    meta = load_json(META_PATH)
+    fahrplan = load_json(FAHRPLAN_PATH)["fahrplan"]
     today = datetime.now(timezone.utc).date()
 
     strip = build_strip(meta["led"])

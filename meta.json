@@ -1,0 +1,59 @@
+{
+  "description": "Simulierter Fahrplan: 'meta.json' enthaelt die komplette Konfiguration, 'fahrplan.json' fuer jeden Zug einen eigenen Umlauf mit echten Ankunfts- und Abfahrtszeiten.",
+  "tickinterval_ms": 100,
+  "resync_interval_seconds": 60,
+  "timezone": "UTC",
+  "hinweis": "Alle Zeiten sind echte UTC-Zeitstempel nach ISO 8601 (Suffix 'Z'). Beim Start werden sie auf das heutige Datum umdatiert und der Zug anhand der aktuellen Uhrzeit positioniert. Haltedauer = departure - arrival, Fahrzeit = arrival(naechster Halt) - departure(aktueller Halt). Ein Umlauf laeuft von Station 0 ueber Station 21 zurueck bis Station 1 und wiederholt sich alle cycle_seconds. delay_in_sec steht optional an jedem Halt (Default 0) und wirkt kumulativ: es verschiebt diesen Halt und alle folgenden. In der Wendezeit am Zyklusende wird die Verspaetung wieder aufgeholt.",
+  "led": {
+    "count": 300,
+    "pin": 18,
+    "freq_hz": 800000,
+    "dma": 10,
+    "brightness": 100,
+    "invert": false,
+    "channel": 0
+  },
+  "station_color": [255, 255, 255],
+  "routes": [
+    {
+      "id": 0,
+      "name": "Linie 1",
+      "color": [255, 0, 0],
+      "start_of_route": 0,
+      "led_layout": [
+        9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4, 1
+      ],
+      "trains": [
+        { "id": 0 },
+        { "id": 1 },
+        { "id": 2 },
+        { "id": 3 },
+        { "id": 4 }
+      ],
+      "stations": [
+        { "id": 0, "name": "Moosweiher", "position": 0 },
+        { "id": 1, "name": "Diakoniekrankenhaus", "position": 9 },
+        { "id": 2, "name": "Elsässer Straße", "position": 16 },
+        { "id": 3, "name": "Paduaallee", "position": 29 },
+        { "id": 4, "name": "Betzenhauser Torplatz", "position": 34 },
+        { "id": 5, "name": "Runzmattenweg", "position": 39 },
+        {"id": 6,"name": "Von-Müller-Straße / Technisches Rathaus", "position": 47},
+        { "id": 7, "name": "Rathaus im Stühlinger", "position": 53 },
+        { "id": 8, "name": "Eschholzstraße", "position": 67 },
+        { "id": 9, "name": "Hauptbahnhof", "position": 75 },
+        { "id": 10, "name": "Stadttheater", "position": 83 },
+        { "id": 11, "name": "Bertoldsbrunnen", "position": 90 },
+        { "id": 12, "name": "Oberlinden", "position": 97 },
+        { "id": 13, "name": "Schwabentorbrücke", "position": 102 },
+        { "id": 14, "name": "Brauerei Ganter", "position": 105 },
+        { "id": 15, "name": "Maria-Hilf-Kirche", "position": 108 },
+        { "id": 16, "name": "Alter Messplatz", "position": 112 },
+        { "id": 17, "name": "Musikhochschule", "position": 116 },
+        { "id": 18, "name": "Emil-Gött-Straße", "position": 120 },
+        { "id": 19, "name": "Hasemannstraße", "position": 125 },
+        { "id": 20, "name": "Römerhof", "position": 129 },
+        { "id": 21, "name": "Laßbergstraße", "position": 133 }
+      ]
+    }
+  ]
+}
