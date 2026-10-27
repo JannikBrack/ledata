@@ -13,47 +13,213 @@
     "invert": false,
     "channel": 0
   },
-  "station_color": [255, 255, 255],
+  "station_color": [
+    255,
+    255,
+    255
+  ],
   "routes": [
     {
       "id": 0,
       "name": "Linie 1",
-      "color": [255, 0, 0],
+      "color": [
+        255,
+        0,
+        0
+      ],
       "start_of_route": 0,
       "led_layout": [
-        9, 7, 13, 5, 5, 8, 6, 14, 8, 8, 7, 7, 5, 3, 3, 4, 4, 4, 5, 4, 4, 1
+        9,
+        7,
+        13,
+        5,
+        5,
+        8,
+        6,
+        14,
+        8,
+        8,
+        7,
+        7,
+        5,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        4,
+        4,
+        1
       ],
       "trains": [
-        { "id": 0 },
-        { "id": 1 },
-        { "id": 2 },
-        { "id": 3 },
-        { "id": 4 }
+        {
+          "id": 0
+        },
+        {
+          "id": 1
+        },
+        {
+          "id": 2
+        },
+        {
+          "id": 3
+        },
+        {
+          "id": 4
+        }
       ],
       "stations": [
-        { "id": 0, "name": "Moosweiher", "position": 0 },
-        { "id": 1, "name": "Diakoniekrankenhaus", "position": 9 },
-        { "id": 2, "name": "Elsässer Straße", "position": 16 },
-        { "id": 3, "name": "Paduaallee", "position": 29 },
-        { "id": 4, "name": "Betzenhauser Torplatz", "position": 34 },
-        { "id": 5, "name": "Runzmattenweg", "position": 39 },
-        {"id": 6,"name": "Von-Müller-Straße / Technisches Rathaus", "position": 47},
-        { "id": 7, "name": "Rathaus im Stühlinger", "position": 53 },
-        { "id": 8, "name": "Eschholzstraße", "position": 67 },
-        { "id": 9, "name": "Hauptbahnhof", "position": 75 },
-        { "id": 10, "name": "Stadttheater", "position": 83 },
-        { "id": 11, "name": "Bertoldsbrunnen", "position": 90 },
-        { "id": 12, "name": "Oberlinden", "position": 97 },
-        { "id": 13, "name": "Schwabentorbrücke", "position": 102 },
-        { "id": 14, "name": "Brauerei Ganter", "position": 105 },
-        { "id": 15, "name": "Maria-Hilf-Kirche", "position": 108 },
-        { "id": 16, "name": "Alter Messplatz", "position": 112 },
-        { "id": 17, "name": "Musikhochschule", "position": 116 },
-        { "id": 18, "name": "Emil-Gött-Straße", "position": 120 },
-        { "id": 19, "name": "Hasemannstraße", "position": 125 },
-        { "id": 20, "name": "Römerhof", "position": 129 },
-        { "id": 21, "name": "Laßbergstraße", "position": 133 }
-      ]
+        {
+          "id": 0,
+          "name": "Moosweiher",
+          "position": 0,
+          "trias_ref": "de:08311:30800"
+        },
+        {
+          "id": 1,
+          "name": "Diakoniekrankenhaus",
+          "position": 9,
+          "trias_ref": "de:08311:30801"
+        },
+        {
+          "id": 2,
+          "name": "Moosgrund",
+          "position": 16,
+          "trias_ref": "de:08311:30802"
+        },
+        {
+          "id": 3,
+          "name": "Paduaallee",
+          "position": 29,
+          "trias_ref": "de:08311:30504"
+        },
+        {
+          "id": 4,
+          "name": "Betzenhauser Torplatz",
+          "position": 34,
+          "trias_ref": "de:08311:30503"
+        },
+        {
+          "id": 5,
+          "name": "Am Bischofskreuz",
+          "position": 39,
+          "trias_ref": "de:08311:30502"
+        },
+        {
+          "id": 6,
+          "name": "Runzmattenweg",
+          "position": 47,
+          "trias_ref": "de:08311:30501"
+        },
+        {
+          "id": 7,
+          "name": "Rathaus im Stühlinger",
+          "position": 53,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 8,
+          "name": "Eschholzstraße",
+          "position": 67,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 9,
+          "name": "Hauptbahnhof",
+          "position": 75,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 10,
+          "name": "Stadttheater",
+          "position": 83,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 11,
+          "name": "Bertoldsbrunnen",
+          "position": 90,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 12,
+          "name": "Oberlinden",
+          "position": 97,
+          "trias_ref": "de:08311:30118"
+        },
+        {
+          "id": 13,
+          "name": "Schwabentorbrücke",
+          "position": 102,
+          "trias_ref": "de:08311:30119"
+        },
+        {
+          "id": 14,
+          "name": "Brauerei Ganter",
+          "position": 105,
+          "trias_ref": "de:08311:30120"
+        },
+        {
+          "id": 15,
+          "name": "Maria-Hilf-Kirche",
+          "position": 108,
+          "trias_ref": "de:08311:30306"
+        },
+        {
+          "id": 16,
+          "name": "Alter Messplatz",
+          "position": 112,
+          "trias_ref": "de:08311:30305"
+        },
+        {
+          "id": 17,
+          "name": "Musikhochschule",
+          "position": 116,
+          "trias_ref": "de:08311:30304"
+        },
+        {
+          "id": 18,
+          "name": "Emil-Gött-Straße",
+          "position": 120,
+          "trias_ref": "de:08311:30303"
+        },
+        {
+          "id": 19,
+          "name": "Hasemannstraße",
+          "position": 125,
+          "trias_ref": "de:08311:30302"
+        },
+        {
+          "id": 20,
+          "name": "Römerhof",
+          "position": 129,
+          "trias_ref": "de:08311:30301"
+        },
+        {
+          "id": 21,
+          "name": "Laßbergstraße",
+          "position": 133,
+          "trias_ref": "de:08311:30300"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11001:I:H",
+          "frb:11001:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30800",
+          "de:08311:30300"
+        ]
+      }
     }
-  ]
+  ],
+  "trias": {
+    "endpoint": "https://efa-bw.de/trias",
+    "requestor_key_env": "TRIAS_REQUESTOR_KEY",
+    "poll_interval_seconds": 30,
+    "lookback_minutes": 45,
+    "lead_seconds": 120
+  }
 }
