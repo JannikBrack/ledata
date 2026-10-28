@@ -14,6 +14,7 @@ from led_backend import PixelStrip, FakeStrip, HAVE_RPI
 
 META_PATH = Path(__file__).with_name("meta.json")
 FAHRPLAN_PATH = Path(__file__).with_name("fahrplan.json")
+LOG = logging.getLogger(__name__)
 
 
 def load_json(path):
@@ -76,6 +77,39 @@ def journeys_to_trips(journeys):
     return trips
 
 
+def _format_log_time(value):
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _log_live_snapshot(route_config, journeys):
+    station_names = {
+        station["id"]: station.get("name", str(station["id"]))
+        for station in route_config["stations"]
+    }
+    route_name = route_config.get("name", route_config["id"])
+    LOG.info(
+        "Route %s (%s): %d Bahnen live",
+        route_config["id"],
+        route_name,
+        len(journeys),
+    )
+    for journey in journeys:
+        LOG.info(
+            "TRIAS Fahrt %s auf Route %s: Linie %s, Ziel %s",
+            journey.journey_ref,
+            route_name,
+            journey.line_name or journey.line_ref or "unbekannt",
+            journey.destination or "unbekannt",
+        )
+        for call in journey.calls:
+            LOG.info(
+                "  Halt %s: Ankunft prognostiziert %s, fahrplanmaessig %s",
+                station_names.get(call.station_id, str(call.station_id)),
+                _format_log_time(call.arrival),
+                _format_log_time(call.planned_arrival),
+            )
+
+
 def build_live_source(meta):
     """Liefert eine Funktion now -> {route_id: [Trip]} auf Basis der TRIAS-API."""
     from live_feed import LiveFeed, TriasClient, load_requestor_key
@@ -89,17 +123,24 @@ def build_live_source(meta):
         lookback_minutes=trias.get("lookback_minutes", 45),
         lead_seconds=trias.get("lead_seconds", 120),
     )
+    route_configs = {route["id"]: route for route in meta["routes"]}
 
     def source(now):
         snapshot = feed.fetch(now)
         for route_id, journeys in snapshot.items():
-            logging.info("Route %s: %d Bahnen live", route_id, len(journeys))
+            route_config = route_configs.get(route_id)
+            if route_config is not None:
+                _log_live_snapshot(route_config, journeys)
         return {route_id: journeys_to_trips(journeys) for route_id, journeys in snapshot.items()}
 
     return source
 
 
 def build_route(route_config, fahrplan, day, live=False):
+    station_names = {
+        station["id"]: station.get("name", str(station["id"]))
+        for station in route_config["stations"]
+    }
     if live:
         # Live-Modus: die Zuege kommen zur Laufzeit aus der API (Route.set_trips)
         return Route(
@@ -109,6 +150,7 @@ def build_route(route_config, fahrplan, day, live=False):
             tuple(route_config["color"]),
             route_config["start_of_route"],
             [],
+            station_names=station_names,
         )
     trips = build_trips(fahrplan, route_config["id"], day)
     trips_by_train = {trip.train_id: trip for trip in trips}
@@ -126,6 +168,7 @@ def build_route(route_config, fahrplan, day, live=False):
         tuple(route_config["color"]),
         route_config["start_of_route"],
         trips,
+        station_names=station_names,
     )
 
 
@@ -138,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
 
     meta = load_json(META_PATH)

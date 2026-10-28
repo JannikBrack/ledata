@@ -11,6 +11,7 @@ import types
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from classes import Controller, Route, Stop, Train, Trip
 from led_backend import FakeStrip
@@ -21,7 +22,18 @@ T0 = datetime(2026, 1, 1, 5, 0, 0, tzinfo=timezone.utc)
 
 def make_route(trains=None):
     # led_layout [5,5,5] -> Stationen an 0, 5, 10 (Start 0)
-    return Route(0, [5, 5, 5], list(trains or []), (255, 0, 0), 0)
+    return Route(
+        0,
+        [5, 5, 5],
+        list(trains or []),
+        (255, 0, 0),
+        0,
+        station_names={
+            0: "Moosweiher",
+            1: "Diakoniekrankenhaus",
+            2: "Moosgrund",
+        },
+    )
 
 
 def make_trip(trip_id="live-0", base=None):
@@ -101,6 +113,76 @@ class TrainLiveTests(unittest.TestCase):
         for _ in range(100):
             self.train.move(self.route)
         self.assertEqual(self.train.position, 10)
+
+
+class ArrivalLoggingTests(unittest.TestCase):
+    def _train_approaching_station(self, trip, station_index):
+        train = Train(id=trip.id, trip=trip)
+        train.stop_index = station_index - 1
+        train.next_index = station_index
+        train.position = 4 if station_index == 1 else 9
+        train.target_position = 5 if station_index == 1 else 10
+        train.direction = 1
+        train.at_station = False
+        train.ticks_to_move = 1
+        train.ticks_per_led = 1
+        return train
+
+    def test_arrival_logs_next_stop_and_eta_once(self):
+        trip = make_trip()
+        train = self._train_approaching_station(trip, 1)
+        route = make_route([train])
+        controller = Controller([route], FakeStrip(15))
+
+        with self.assertLogs("classes", level="INFO") as captured:
+            controller._move_trains(route)
+            controller._move_trains(route)
+
+        messages = "\n".join(captured.output)
+        self.assertEqual(messages.count("angekommen"), 1)
+        self.assertIn("Diakoniekrankenhaus", messages)
+        self.assertIn("Moosgrund", messages)
+        self.assertIn("2026-01-01T05:03:30Z", messages)
+
+    def test_terminal_arrival_has_no_next_stop(self):
+        trip = make_trip()
+        train = self._train_approaching_station(trip, 2)
+        route = make_route([train])
+        controller = Controller([route], FakeStrip(15))
+
+        with self.assertLogs("classes", level="INFO") as captured:
+            controller._move_trains(route)
+
+        self.assertIn("Moosgrund", captured.output[0])
+        self.assertIn("keine weitere Haltestelle", captured.output[0])
+
+    def test_time_sync_logs_arrival_transition_only_once(self):
+        trip = make_trip()
+        train = self._train_approaching_station(trip, 1)
+        route = make_route([train])
+        controller = Controller([route], FakeStrip(15))
+
+        with self.assertLogs("classes", level="INFO") as captured:
+            previous_states = controller._capture_arrival_states(route)
+            train.sync_to_time(route, T0 + timedelta(seconds=130))
+            controller._log_arrival_transitions(route, previous_states)
+
+            previous_states = controller._capture_arrival_states(route)
+            train.sync_to_time(route, T0 + timedelta(seconds=131))
+            controller._log_arrival_transitions(route, previous_states)
+
+        self.assertEqual(sum("angekommen" in line for line in captured.output), 1)
+
+    def test_startup_synchronization_does_not_log_arrival(self):
+        trip = make_trip()
+        train = Train(id=trip.id, trip=trip)
+        route = make_route([train])
+        controller = Controller([route], FakeStrip(15))
+
+        with patch("classes.logger.info") as log_info:
+            controller.sync_trains()
+
+        log_info.assert_not_called()
 
 
 class SetTripsTests(unittest.TestCase):
