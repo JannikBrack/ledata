@@ -3,6 +3,7 @@ import math
 import queue
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from led_backend import PixelStrip, Color
@@ -462,7 +463,7 @@ class Controller():
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
-    trip_source: callable | None = None # liefert live {route_id: [Trip]}, darf werfen
+    trip_source: Callable[[datetime], dict[int, list[Trip]]] | None = None # liefert live {route_id: [Trip]}, darf werfen
     live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
@@ -526,9 +527,12 @@ class Controller():
 
     def _live_worker(self) -> None:
         """Fragt trip_source in einem eigenen Thread ab; Netzwerk blockiert nie den Hauptloop."""
+        trip_source = self.trip_source
+        if trip_source is None:
+            return
         while not self.stopped:
             try:
-                snapshot = self.trip_source(datetime.now(timezone.utc))
+                snapshot = trip_source(datetime.now(timezone.utc))
                 if snapshot is not None:
                     self._live_queue.put(snapshot)
             except Exception:
