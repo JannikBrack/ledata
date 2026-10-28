@@ -11,6 +11,7 @@ from pathlib import Path
 
 from classes import Route, Train, Trip, Stop, Controller
 from led_backend import PixelStrip, FakeStrip, HAVE_RPI
+from ui import run_ui
 
 META_PATH = Path(__file__).with_name("meta.json")
 FAHRPLAN_PATH = Path(__file__).with_name("fahrplan.json")
@@ -151,6 +152,7 @@ def build_route(route_config, fahrplan, day, live=False):
             route_config["start_of_route"],
             [],
             station_names=station_names,
+            name=route_config.get("name", f"Linie {route_config['id']}"),
         )
     trips = build_trips(fahrplan, route_config["id"], day)
     trips_by_train = {trip.train_id: trip for trip in trips}
@@ -169,6 +171,7 @@ def build_route(route_config, fahrplan, day, live=False):
         route_config["start_of_route"],
         trips,
         station_names=station_names,
+        name=route_config.get("name", f"Linie {route_config['id']}"),
     )
 
 
@@ -178,6 +181,12 @@ if __name__ == "__main__":
                         help="live = Echtzeit aus der TRIAS-API (Standard), fahrplan = fahrplan.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="ohne LED-Hardware laufen, Streifen als ASCII im Terminal zeigen")
+    ui_group = parser.add_mutually_exclusive_group()
+    ui_group.add_argument("--ui", dest="ui", action="store_true",
+                          help="Touchscreen-UI im Vollbild starten")
+    ui_group.add_argument("--terminal", dest="ui", action="store_false",
+                          help="bisherigen Terminalbetrieb verwenden")
+    parser.set_defaults(ui=None)
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -201,10 +210,17 @@ if __name__ == "__main__":
     if live:
         controller.trip_source = build_live_source(meta)
         controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
+    use_ui = args.ui if args.ui is not None else HAVE_RPI and not args.dry_run
     try:
-        controller.start()
+        if use_ui:
+            run_ui(routes, controller)
+        else:
+            controller.start()
     except KeyboardInterrupt:
+        pass
+    finally:
         controller.stop()
         controller.reset_strip()
         strip.show()
+    if not use_ui:
         print()

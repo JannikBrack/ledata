@@ -354,6 +354,7 @@ class Station():
 
 class Route():
     id: int
+    name: str
     stations: list[Station]
     station_names: dict[int, str]
     trains: list[Train]
@@ -373,8 +374,10 @@ class Route():
         start_of_route,
         trips=None,
         station_names: dict[int, str] | None = None,
+        name: str | None = None,
     ) -> None:
         self.id = id
+        self.name = name or f"Linie {id}"
 
         station_id = 0
         stations: list[Station] = []
@@ -479,6 +482,7 @@ class Controller():
     ticks: int = 0
     strip: PixelStrip
     stopped: bool = True
+    selected_train: tuple[int, str | int] | None = None
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -486,6 +490,15 @@ class Controller():
         self.ticks = 0
         self._live_queue = queue.Queue()
         self._live_thread = None
+        self.selected_train = None
+
+    def select_train(self, route_id: int | None, train_id: str | int | None = None):
+        """Limit rendering to one train, or restore the complete LED display."""
+        self.selected_train = (
+            (route_id, train_id)
+            if route_id is not None and train_id is not None
+            else None
+        )
 
     def __str__(self) -> str:
         return (
@@ -505,6 +518,15 @@ class Controller():
         blink_on = self.is_blink_on()
         # Zuege ohne laufenden Umlauf (live: vor Start / nach Ende) nicht zeichnen
         active_trains = [train for train in route.trains if train.trip.is_active(now)]
+        if self.selected_train is not None:
+            selected_route_id, selected_train_id = self.selected_train
+            if route.id == selected_route_id:
+                active_trains = [
+                    train for train in active_trains
+                    if train.trip.id == selected_train_id
+                ]
+            else:
+                active_trains = []
         stopped_positions = {train.position for train in active_trains if train.at_station}
 
         for station in route.stations:
