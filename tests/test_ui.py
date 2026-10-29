@@ -65,6 +65,30 @@ def make_train(train_id, direction=1, cyclic=False):
     return train
 
 
+class RouteSelectionUITests(unittest.TestCase):
+    def test_route_button_labels_closure_and_regular_routes(self):
+        closed_route = make_route()
+        closed_route.closed_section = (1, 2)
+        regular_route = make_route()
+        regular_route.id = 8
+        regular_route.name = "Linie 8"
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [closed_route, regular_route]
+        app.root = MagicMock()
+        app.root.winfo_children.return_value = []
+        app.tk = MagicMock()
+        app.closure_store = None
+        app._header = MagicMock()
+
+        app.show_routes()
+
+        button_labels = [
+            call.kwargs["text"] for call in app.tk.Button.call_args_list
+        ]
+        self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
+
+
 class TrainInfoTests(unittest.TestCase):
     def test_summary_includes_route_names_times_position_and_direction(self):
         train = make_train("journey-1")
@@ -269,7 +293,7 @@ class TrainInfoTests(unittest.TestCase):
 
 
 class TrainTableLayoutTests(unittest.TestCase):
-    def test_columns_show_one_closure_warning_and_fill_table_width(self):
+    def test_columns_have_no_closure_warning_and_fill_table_width(self):
         app = TramUI.__new__(TramUI)
         app.route = make_route()
         app.route.closed_section = (1, 2)
@@ -277,20 +301,20 @@ class TrainTableLayoutTests(unittest.TestCase):
 
         app._build_train_table(MagicMock(), ttk)
         tree = ttk.Treeview.return_value
-        tree.heading.assert_any_call("closure", text="⚠", anchor="center")
+        self.assertNotIn("closure", ttk.Treeview.call_args.kwargs["columns"])
         for table_width, expected_other_widths in (
-            (800, [101, 101, 101, 169]),
-            (1200, [157, 157, 157, 261]),
+            (800, [111, 111, 111, 187]),
+            (1200, [167, 167, 167, 279]),
         ):
             with self.subTest(table_width=table_width):
                 app._resize_train_columns(SimpleNamespace(width=table_width))
                 resized_columns = {
                     call.args[0]: call.kwargs["width"]
-                    for call in tree.column.call_args_list[-6:]
+                    for call in tree.column.call_args_list[-5:]
                 }
 
                 self.assertEqual(resized_columns["journey"], round(table_width * 0.35))
-                self.assertEqual(resized_columns["closure"], 48)
+                self.assertNotIn("closure", resized_columns)
                 self.assertEqual(
                     [
                         resized_columns[column]
@@ -300,18 +324,14 @@ class TrainTableLayoutTests(unittest.TestCase):
                 )
                 self.assertEqual(sum(resized_columns.values()), table_width)
 
-    def test_no_closure_has_no_warning_in_table_heading(self):
+    def test_train_table_has_no_closure_column(self):
         app = TramUI.__new__(TramUI)
         app.route = make_route()
         ttk = MagicMock()
 
         app._build_train_table(MagicMock(), ttk)
 
-        ttk.Treeview.return_value.heading.assert_any_call(
-            "closure",
-            text="",
-            anchor="center",
-        )
+        self.assertNotIn("closure", ttk.Treeview.call_args.kwargs["columns"])
 
     def test_detail_stop_columns_fit_narrow_and_wide_touchscreens(self):
         app = TramUI.__new__(TramUI)
@@ -666,7 +686,7 @@ class TrainTableLayoutTests(unittest.TestCase):
             "Baustelle: Moosgrund → Diakoniekrankenhaus · Fußweg/Umstieg 5 min",
         )
 
-    def test_connection_rows_leave_warning_in_heading_not_row(self):
+    def test_connection_rows_do_not_include_empty_closure_value(self):
         app = TramUI.__new__(TramUI)
         app.route = make_route()
         app.route.closed_section = (1, 2)
@@ -688,7 +708,8 @@ class TrainTableLayoutTests(unittest.TestCase):
         app._refresh_connection_table([connection])
 
         row_values = app._tree.insert.call_args.kwargs["values"]
-        self.assertEqual(row_values[1], "")
+        self.assertEqual(len(row_values), 5)
+        self.assertEqual(row_values[1], "Pünktlich")
 
 
 class DirectionFilterUITests(unittest.TestCase):

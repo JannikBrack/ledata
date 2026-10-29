@@ -17,10 +17,10 @@ Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie e
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
 Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
-Die Linienauswahl markiert die betroffene Linie mit einem Warnsymbol. In der
-Fahrtübersicht markiert ein Warnsymbol in der Tabellenüberschrift die Baustelle
-einmalig; Fußwegtexte werden dort nicht angezeigt. Die regulären Endstationen
-und Richtungsfilter bleiben erhalten.
+Die Linienauswahl markiert die betroffene Linie mit „⚠ Baustelle“ neben dem
+Liniennamen. In der Fahrtübersicht gibt es kein separates Warnsymbol; Fußwegtexte
+werden dort nicht angezeigt. Die regulären Endstationen und Richtungsfilter
+bleiben erhalten.
 Die beiden zugänglichen Teilfahrten werden zu einer Verbindung zwischen den
 regulären Endstationen zusammengeführt, wenn der Anschluss nach mindestens
 fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht

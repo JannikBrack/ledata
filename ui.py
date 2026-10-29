@@ -127,29 +127,31 @@ def connection_stop_timeline(
     connection: RouteConnection,
     now: datetime | None = None,
 ) -> StopTimeline | None:
-    trips = {trip.id: trip for trip in route.trips}
-    first_trip = trips.get(connection.first_trip_id)
-    second_trip = trips.get(connection.second_trip_id)
-    if (
-        first_trip is None
-        or second_trip is None
-        or not first_trip.stops
-        or not second_trip.stops
-    ):
+    first_stops = connection.first_stops
+    second_stops = connection.second_stops
+    if not first_stops or not second_stops:
         return None
     if (
-        first_trip.stops[-1].station_id != connection.first_boundary_station_id
-        or second_trip.stops[0].station_id != connection.second_boundary_station_id
+        first_stops[-1].station_id != connection.first_boundary_station_id
+        or second_stops[0].station_id != connection.second_boundary_station_id
     ):
         return None
 
     first_entries = [
-        _trip_stop_entry(route, first_trip, index)
-        for index in range(len(first_trip.stops))
+        StopTimelineEntry(
+            _station_name(route, stop.station_id),
+            stop.arrival,
+            stop.departure,
+        )
+        for stop in first_stops
     ]
     second_entries = [
-        _trip_stop_entry(route, second_trip, index)
-        for index in range(len(second_trip.stops))
+        StopTimelineEntry(
+            _station_name(route, stop.station_id),
+            stop.arrival,
+            stop.departure,
+        )
+        for stop in second_stops
     ]
     first_boundary = _station_name(route, connection.first_boundary_station_id)
     second_boundary = _station_name(route, connection.second_boundary_station_id)
@@ -161,6 +163,12 @@ def connection_stop_timeline(
     moment = now or datetime.now(timezone.utc)
     closure_info = connection_closure_info(route, connection)
     if moment < connection.transfer_arrival:
+        first_trip = Trip(
+            connection.first_trip_id or "first-leg",
+            connection.first_trip_id or "first-leg",
+            list(first_stops),
+            cyclic=False,
+        )
         index, state, _, _ = first_trip.locate(moment)
         current = first_entries[index]
         past = first_entries[:index]
@@ -186,6 +194,12 @@ def connection_stop_timeline(
         position = f"Zu Fuß zwischen {first_boundary} und {second_boundary}"
         next_name = second_entries[0].name
     else:
+        second_trip = Trip(
+            connection.second_trip_id or "second-leg",
+            connection.second_trip_id or "second-leg",
+            list(second_stops),
+            cyclic=False,
+        )
         index, state, _, _ = second_trip.locate(moment)
         current = second_entries[index]
         past = first_entries + [closure_entry] + second_entries[:index]
@@ -389,7 +403,11 @@ class TramUI:
             )
             tk.Button(
                 card,
-                text=f"⚠ {route.name}" if route.closed_section else route.name,
+                text=(
+                    f"{route.name} · ⚠ Baustelle"
+                    if route.closed_section
+                    else route.name
+                ),
                 command=lambda route_id=route.id: self.show_trains(route_id),
                 background=self._color(route.color),
                 foreground="white",
@@ -609,7 +627,7 @@ class TramUI:
         self._refresh_train_rows()
 
     def _build_train_table(self, parent, ttk):
-        columns = ("journey", "closure", "delay", "departure", "arrival", "action")
+        columns = ("journey", "delay", "departure", "arrival", "action")
         self._tree = ttk.Treeview(
             parent,
             columns=columns,
@@ -619,17 +637,11 @@ class TramUI:
             cursor="hand2",
         )
         self._tree.heading("journey", text="Herkunft → Ziel")
-        self._tree.heading(
-            "closure",
-            text="⚠" if self.route.closed_section is not None else "",
-            anchor="center",
-        )
         self._tree.heading("delay", text="Verspätung")
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
         self._tree.heading("action", text="")
         self._tree.column("journey", width=270, anchor="w", stretch=False)
-        self._tree.column("closure", width=48, anchor="center", stretch=False)
         self._tree.column("delay", width=81, anchor="center", stretch=False)
         self._tree.column("departure", width=81, anchor="center", stretch=False)
         self._tree.column("arrival", width=81, anchor="center", stretch=False)
@@ -661,8 +673,7 @@ class TramUI:
     def _resize_train_columns(self, event):
         table_width = event.width
         journey_width = round(table_width * 0.35)
-        closure_width = 48
-        remaining_width = table_width - journey_width - closure_width
+        remaining_width = table_width - journey_width
         other_columns = (
             ("delay", 120),
             ("departure", 120),
@@ -678,7 +689,6 @@ class TramUI:
                 width = round(remaining_width * weight / total_weight)
                 assigned_width += width
             self._tree.column(column, width=width)
-        self._tree.column("closure", width=closure_width)
         self._tree.column("journey", width=journey_width)
 
     def _select_direction(self, direction_id: int | None):
@@ -745,7 +755,6 @@ class TramUI:
             info = train_info(self.route, train)
             values = (
                 f"{info.origin} → {info.destination}",
-                "",
                 self._format_delay(info.current_delay),
                 self._format_time(info.departure),
                 self._format_time(info.arrival),
@@ -774,7 +783,6 @@ class TramUI:
                     f"{_station_name(self.route, connection.origin_station_id)}"
                     f" → {_station_name(self.route, connection.destination_station_id)}"
                 ),
-                "",
                 self._format_delay(timedelta(seconds=connection.delay_seconds)),
                 self._format_time(connection.departure),
                 self._format_time(connection.arrival),

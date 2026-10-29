@@ -220,6 +220,8 @@ class RouteConnection:
     delay_seconds: float
     first_trip_id: str | int | None = None
     second_trip_id: str | int | None = None
+    first_stops: tuple[Stop, ...] = ()
+    second_stops: tuple[Stop, ...] = ()
 
 
 @dataclass

@@ -74,6 +74,8 @@ class LiveConnection:
     delay_seconds: float
     first_journey_ref: str
     second_journey_ref: str
+    first_calls: tuple[LiveCall, ...] = ()
+    second_calls: tuple[LiveCall, ...] = ()
 
 
 @dataclass
@@ -429,6 +431,8 @@ class LiveFeed:
                     ),
                     first_journey_ref=first.journey_ref,
                     second_journey_ref=second.journey_ref,
+                    first_calls=tuple(first.calls),
+                    second_calls=tuple(second.calls),
                 )
             )
 

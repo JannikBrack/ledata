@@ -76,31 +76,30 @@ def build_trips(fahrplan, route_id, day):
     return []
 
 
-def journeys_to_trips(journeys):
-    """Wandelt Live-Fahrten (live_feed.LiveJourney) in einmalige Trips um.
+def _calls_to_stops(calls):
+    return [
+        Stop(
+            call.station_id,
+            call.arrival,
+            call.departure,
+            reported_delay_seconds=max(
+                0.0,
+                (call.departure - call.planned_departure).total_seconds(),
+            ),
+        )
+        for call in calls
+    ]
 
-    Die Prognosezeiten werden als Fahrzeiten gespeichert; die Abweichung vom
-    Fahrplan bleibt separat pro Halt für die Verspätungsanzeige erhalten.
-    """
+
+def journeys_to_trips(journeys):
+    """Wandelt Live-Fahrten in einmalige Trips mit getrenntem Live-Verzug um."""
     trips = []
     for journey in journeys:
-        stops = [
-            Stop(
-                call.station_id,
-                call.arrival,
-                call.departure,
-                reported_delay_seconds=max(
-                    0.0,
-                    (call.departure - call.planned_departure).total_seconds(),
-                ),
-            )
-            for call in journey.calls
-        ]
         trips.append(
             Trip(
                 id=journey.journey_ref,
                 train_id=journey.journey_ref,
-                stops=stops,
+                stops=_calls_to_stops(journey.calls),
                 cyclic=False,
             )
         )
@@ -122,6 +121,8 @@ def journeys_to_connections(connections):
             delay_seconds=connection.delay_seconds,
             first_trip_id=connection.first_journey_ref,
             second_trip_id=connection.second_journey_ref,
+            first_stops=tuple(_calls_to_stops(connection.first_calls)),
+            second_stops=tuple(_calls_to_stops(connection.second_calls)),
         )
         for connection in connections
     ]
