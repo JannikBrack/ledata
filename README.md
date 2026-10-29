@@ -38,12 +38,17 @@ Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
 bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
 pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge
 zeigen mit „Tippen: Details →“ ihre Auswahlfunktion.
-Die Detailansicht ergänzt die aktuelle Position; während sie geöffnet ist,
-zeigt der LED-Streifen nur die ausgewählte Bahn. Zeiten werden in der lokalen
-Zeitzone des Raspberry Pi angezeigt. Zusätzlich listet sie alle angefahrenen
-Haltestellen in Fahrtrichtung mit der jeweiligen Ankunftszeit. Bei einer
-Baustellen-Verbindung stehen die Halte beider Teilfahrten in der Liste; der
-Baustellenabschnitt erscheint zwischen seinen beiden Sperrgrenzen.
+Die Detailansicht zeigt Fahrtrichtung, Abfahrt, Ankunft, Verspätung, aktuellen
+Halt und nächstes Ziel; eine separate Weiterfahrt-Zeit entfällt. Während sie
+geöffnet ist, zeigt der LED-Streifen nur die ausgewählte Bahn. Zeiten werden in
+der lokalen Zeitzone des Raspberry Pi angezeigt. In der Haltestellenliste
+stehen kommende Halte oberhalb und vergangene Halte unterhalb des aktuellen,
+grün markierten Halts. Kommende und vergangene Halte sind zunächst eingeklappt
+und lassen sich antippen. Aufgeklappte Einträge zeigen Ankunfts- und
+Abfahrtszeit. Beim Erreichen eines neuen Halts aktualisiert sich die Ansicht.
+Bei einer Baustellen-Verbindung ist der Baustellenhinweis oberhalb der Liste
+sichtbar und erscheint zusätzlich an seiner Stelle in der Haltefolge; während
+des Fußwegs wird der Umstieg als aktuelle Position markiert.
 
 Mit `--terminal` bleibt der bisherige Terminalbetrieb verfügbar. Auf anderen
 Systemen kann die grafische Oberfläche mit `--ui` explizit gestartet werden,
