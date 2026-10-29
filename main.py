@@ -10,11 +10,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from classes import Route, Train, Trip, Stop, Controller
+from closures import ClosureStore
 from led_backend import PixelStrip, FakeStrip, HAVE_RPI
 from ui import run_ui
 
 META_PATH = Path(__file__).with_name("meta.json")
 FAHRPLAN_PATH = Path(__file__).with_name("fahrplan.json")
+BAUSTELLEN_PATH = Path(__file__).with_name("baustellen.json")
 LOG = logging.getLogger(__name__)
 
 
@@ -101,6 +103,29 @@ def _format_log_time(value):
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def confirm_saved_closures_in_terminal(routes, closure_store):
+    if closure_store is None:
+        return
+    for route in routes:
+        closure = closure_store.get(route.id)
+        if closure is None:
+            continue
+        first_name = route.station_names.get(closure[0], str(closure[0]))
+        second_name = route.station_names.get(closure[1], str(closure[1]))
+        while True:
+            answer = input(
+                f"Gibt es die Baustelle zwischen {first_name} und {second_name} "
+                f"auf {route.name} noch? [j/n] "
+            ).strip().lower()
+            if answer in {"j", "ja", "y", "yes"}:
+                break
+            if answer in {"n", "nein", "no"}:
+                closure_store.set(route.id, None)
+                route.set_closed_section(None)
+                break
+            print("Bitte mit j oder n antworten.")
+
+
 def _log_live_snapshot(route_config, journeys):
     station_names = {
         station["id"]: station.get("name", str(station["id"]))
@@ -130,7 +155,7 @@ def _log_live_snapshot(route_config, journeys):
             )
 
 
-def build_live_source(meta):
+def build_live_source(meta, closure_store=None):
     """Liefert eine Funktion now -> {route_id: [Trip]} auf Basis der TRIAS-API."""
     from live_feed import LiveFeed, TriasClient, load_requestor_key
 
@@ -142,6 +167,7 @@ def build_live_source(meta):
         meta["routes"],
         lookback_minutes=trias.get("lookback_minutes", 45),
         lead_seconds=trias.get("lead_seconds", 120),
+        closure_provider=closure_store.snapshot if closure_store is not None else None,
     )
     route_configs = {route["id"]: route for route in meta["routes"]}
 
@@ -214,6 +240,16 @@ if __name__ == "__main__":
 
     meta = load_json(META_PATH)
     live = args.source == "live"
+    closure_store = None
+    if live:
+        closure_store = ClosureStore(
+            BAUSTELLEN_PATH,
+            {
+                route["id"]: [station["id"] for station in route["stations"]]
+                for route in meta["routes"]
+            },
+        )
+        closure_store.load()
     fahrplan = [] if live else load_json(FAHRPLAN_PATH)["fahrplan"]
     today = datetime.now(timezone.utc).date()
 
@@ -222,17 +258,22 @@ if __name__ == "__main__":
     strip.begin()
 
     routes = [build_route(route_config, fahrplan, today, live=live) for route_config in meta["routes"]]
+    if closure_store is not None:
+        for route in routes:
+            route.set_closed_section(closure_store.get(route.id))
 
     controller = Controller(routes, strip)
     controller.tickinterval = meta["tickinterval_ms"]
     controller.resync_interval_seconds = meta.get("resync_interval_seconds", 60)
     if live:
-        controller.trip_source = build_live_source(meta)
+        controller.trip_source = build_live_source(meta, closure_store)
         controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
     use_ui = args.ui if args.ui is not None else HAVE_RPI and not args.dry_run
     try:
+        if not use_ui:
+            confirm_saved_closures_in_terminal(routes, closure_store)
         if use_ui:
-            run_ui(routes, controller)
+            run_ui(routes, controller, closure_store)
         else:
             controller.start()
     except KeyboardInterrupt:

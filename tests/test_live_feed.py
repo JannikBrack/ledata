@@ -191,6 +191,24 @@ class FetchTests(unittest.TestCase):
         refs = [j.journey_ref for j in result[7]]
         self.assertEqual(len(refs), len(set(refs)))
 
+    def test_fetch_uses_closure_snapshot_for_live_journeys(self):
+        parsed = parse_stop_events(MOOS, STATION_REFS)
+        now = self._median_midpoint(parsed)
+        client = FakeClient(MOOS)
+        feed = LiveFeed(
+            client,
+            [self.route],
+            closure_provider=lambda: {7: (10, 11)},
+        )
+
+        result = feed.fetch(now)
+
+        self.assertGreater(len(result[7]), 0)
+        self.assertEqual(len(client.calls), 2)
+        self.assertTrue(
+            all(journey.calls[-1].station_id == 10 for journey in result[7])
+        )
+
     def test_fetch_outside_window_is_empty(self):
         parsed = parse_stop_events(MOOS, STATION_REFS)
         future = max(j.calls[-1].arrival for j in parsed) + timedelta(hours=3)
@@ -210,6 +228,36 @@ class FetchTests(unittest.TestCase):
             LiveFeed(client, [self.route]).fetch(
                 datetime(2026, 10, 27, 9, 30, tzinfo=timezone.utc)
             )
+
+    def test_closure_truncates_journeys_at_each_directional_terminal(self):
+        outbound = parse_stop_events(MOOS, STATION_REFS)[0]
+        inbound = parse_stop_events(LASS, STATION_REFS)[0]
+
+        outbound_part = LiveFeed._truncate_at_closure(
+            self.route, outbound, (10, 11)
+        )
+        inbound_part = LiveFeed._truncate_at_closure(
+            self.route, inbound, (10, 11)
+        )
+
+        self.assertEqual(
+            [call.station_id for call in outbound_part.calls],
+            list(range(11)),
+        )
+        self.assertEqual(
+            [call.station_id for call in inbound_part.calls],
+            list(range(21, 10, -1)),
+        )
+        self.assertEqual(outbound_part.destination, self.route["stations"][10]["name"])
+        self.assertEqual(inbound_part.destination, self.route["stations"][11]["name"])
+
+    def test_closure_drops_journey_starting_at_boundary_into_closed_track(self):
+        journey = parse_stop_events(MOOS, STATION_REFS)[0]
+        journey.calls = journey.calls[10:]
+
+        self.assertIsNone(
+            LiveFeed._truncate_at_closure(self.route, journey, (10, 11))
+        )
 
 
 class RequestTests(unittest.TestCase):

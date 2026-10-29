@@ -289,18 +289,90 @@ class LiveFeed:
         lookback_minutes=45,
         lead_seconds=120,
         number_of_results=12,
+        closure_provider=None,
     ):
         self.client = client
         self.routes = routes
         self.lookback_minutes = lookback_minutes
         self.lead_seconds = lead_seconds
         self.number_of_results = number_of_results
+        self.closure_provider = closure_provider
+
+    @staticmethod
+    def _truncate_at_closure(route, journey, closure):
+        if not closure:
+            return journey
+
+        station_ids = [station["id"] for station in route["stations"]]
+        station_order = {
+            station_id: index for index, station_id in enumerate(station_ids)
+        }
+        first_boundary, second_boundary = closure
+        lower_index = min(
+            station_order[first_boundary], station_order[second_boundary]
+        )
+        upper_index = max(
+            station_order[first_boundary], station_order[second_boundary]
+        )
+        call_indices = [
+            station_order[call.station_id]
+            for call in journey.calls
+            if call.station_id in station_order
+        ]
+        if len(call_indices) < 2:
+            return journey
+
+        start_index = call_indices[0]
+        direction = 1 if call_indices[-1] > start_index else -1
+        if direction > 0 and start_index < lower_index:
+            terminal_index = lower_index
+        elif direction < 0 and start_index > upper_index:
+            terminal_index = upper_index
+        elif (
+            direction > 0 and start_index == lower_index
+            or direction < 0 and start_index == upper_index
+        ):
+            return None
+        else:
+            return journey
+
+        terminal_id = station_ids[terminal_index]
+        terminal_call_index = next(
+            (
+                index
+                for index, call in enumerate(journey.calls)
+                if call.station_id == terminal_id
+            ),
+            None,
+        )
+        if terminal_call_index is None:
+            return journey
+
+        calls = journey.calls[:terminal_call_index + 1]
+        if len(calls) < 2:
+            return None
+        names = {
+            station["id"]: station.get("name", str(station["id"]))
+            for station in route["stations"]
+        }
+        return LiveJourney(
+            journey_ref=journey.journey_ref,
+            line_ref=journey.line_ref,
+            line_name=journey.line_name,
+            destination=names[terminal_id],
+            calls=calls,
+        )
 
     def fetch(self, now):
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
         result = {}
+        closures = (
+            self.closure_provider()
+            if self.closure_provider is not None
+            else {}
+        )
         for route in self.routes:
             route_id = route["id"]
             trias = route["trias"]
@@ -333,6 +405,11 @@ class LiveFeed:
                     )
                     continue
                 for journey in journeys:
+                    journey = self._truncate_at_closure(
+                        route, journey, closures.get(route_id)
+                    )
+                    if journey is None:
+                        continue
                     by_ref[journey.journey_ref] = journey
 
             if failures and failures == len(origin_refs):

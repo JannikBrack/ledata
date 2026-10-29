@@ -2,14 +2,23 @@
 
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from classes import Controller, Route, Train, Trip, Stop
+from closures import ClosureStore
 from led_backend import FakeStrip
 from live_feed import LiveCall, LiveJourney
 from main import journeys_to_trips
-from ui import TramUI, filter_trains, train_info
+from ui import (
+    TramUI,
+    filter_trains,
+    route_direction_destination_ids,
+    train_info,
+    walking_instruction,
+)
 
 
 START = datetime(2026, 1, 1, 5, 0, tzinfo=timezone.utc)
@@ -148,6 +157,17 @@ class TrainInfoTests(unittest.TestCase):
         self.assertEqual(filter_trains(route, route.trains, 2), [outbound])
         self.assertEqual(filter_trains(route, route.trains, 0), [inbound])
 
+    def test_closure_destination_lists_show_walking_terminal(self):
+        outbound = make_train("outbound", direction=1)
+        route = make_route([outbound])
+        route.closed_section = (1, 2)
+
+        self.assertEqual(route_direction_destination_ids(route), (1, 2))
+        self.assertEqual(
+            walking_instruction(route, outbound, route.closed_section),
+            "Zu Fuß bis Diakoniekrankenhaus",
+        )
+
 
 class TrainTableLayoutTests(unittest.TestCase):
     def test_columns_keep_journey_at_half_of_available_table_width(self):
@@ -157,17 +177,18 @@ class TrainTableLayoutTests(unittest.TestCase):
         app._build_train_table(MagicMock(), ttk)
         tree = ttk.Treeview.return_value
         for table_width, expected_other_widths in (
-            (800, [86, 86, 86, 142]),
-            (1200, [129, 129, 129, 213]),
+            (800, [63, 63, 63, 107]),
+            (1200, [95, 95, 95, 159]),
         ):
             with self.subTest(table_width=table_width):
                 app._resize_train_columns(SimpleNamespace(width=table_width))
                 resized_columns = {
                     call.args[0]: call.kwargs["width"]
-                    for call in tree.column.call_args_list[-5:]
+                    for call in tree.column.call_args_list[-6:]
                 }
 
-                self.assertEqual(resized_columns["journey"], table_width // 2)
+                self.assertEqual(resized_columns["journey"], round(table_width * 0.35))
+                self.assertEqual(resized_columns["walk"], round(table_width * 0.28))
                 self.assertEqual(
                     [
                         resized_columns[column]
@@ -176,6 +197,49 @@ class TrainTableLayoutTests(unittest.TestCase):
                     expected_other_widths,
                 )
                 self.assertEqual(sum(resized_columns.values()), table_width)
+
+
+class ClosureConfirmationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+        route = make_route()
+        self.route = route
+        self.store = ClosureStore(
+            Path(self.temporary_directory.name) / "baustellen.json",
+            {route.id: [station.id for station in route.stations]},
+        )
+        self.store.set(route.id, (1, 2))
+        route.set_closed_section((1, 2))
+        self.app = TramUI.__new__(TramUI)
+        self.app.routes = [route]
+        self.app.closure_store = self.store
+        self.app.messagebox = MagicMock()
+        self.app.root = MagicMock()
+
+    def test_confirming_keeps_saved_closure(self):
+        self.app.messagebox.askyesnocancel.return_value = True
+
+        self.app._confirm_saved_closures()
+
+        self.assertEqual(self.store.get(self.route.id), (1, 2))
+        self.assertEqual(self.route.closed_section, (1, 2))
+
+    def test_declining_removes_saved_closure(self):
+        self.app.messagebox.askyesnocancel.return_value = False
+
+        self.app._confirm_saved_closures()
+
+        self.assertIsNone(self.store.get(self.route.id))
+        self.assertIsNone(self.route.closed_section)
+
+    def test_dismissing_confirmation_keeps_saved_closure(self):
+        self.app.messagebox.askyesnocancel.return_value = None
+
+        self.app._confirm_saved_closures()
+
+        self.assertEqual(self.store.get(self.route.id), (1, 2))
+        self.assertEqual(self.route.closed_section, (1, 2))
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
@@ -213,6 +277,19 @@ class ControllerTrainSelectionTests(unittest.TestCase):
 
         self.assertEqual(strip.getPixelColor(2), 0xFF0000)
         self.assertEqual(strip.getPixelColor(8), 0xFF0000)
+
+    def test_closed_section_is_orange_between_station_pixels(self):
+        route = make_route()
+        route.set_closed_section((0, 1))
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+
+        controller.draw(route)
+
+        self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(5), 0xFFFFFF)
+        for position in range(1, 5):
+            self.assertEqual(strip.getPixelColor(position), 0xFF8000)
 
 
 if __name__ == "__main__":

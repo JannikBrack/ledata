@@ -415,6 +415,7 @@ class Route():
         self.trips = trips or []
 
         self.color = color
+        self.closed_section: tuple[int, int] | None = None
 
         self.start_of_route = start_of_route
         self.end_of_route = start_of_route + self.max_led_count - 1
@@ -441,6 +442,22 @@ class Route():
             if station.id == station_id:
                 return station.position
         return self.start_of_route
+
+    def set_closed_section(self, station_ids: tuple[int, int] | None):
+        if station_ids is None:
+            self.closed_section = None
+            return
+        station_positions = {
+            station.id: index for index, station in enumerate(self.stations)
+        }
+        try:
+            first_index = station_positions[station_ids[0]]
+            second_index = station_positions[station_ids[1]]
+        except KeyError as exc:
+            raise ValueError(f"Unknown station in closed section: {exc.args[0]}") from exc
+        if abs(first_index - second_index) != 1:
+            raise ValueError("A closed section must connect adjacent stations")
+        self.closed_section = station_ids
 
     def trip_for_train(self, train_id):
         for trip in self.trips:
@@ -554,6 +571,15 @@ class Controller():
                 continue
             for position in train.occupied_positions():
                 self.set_pixel(position, Color(*route.color))
+
+        if route.closed_section is not None:
+            first_position = route.position_of_station(route.closed_section[0])
+            second_position = route.position_of_station(route.closed_section[1])
+            for position in range(
+                min(first_position, second_position) + 1,
+                max(first_position, second_position),
+            ):
+                self.set_pixel(position, Color(255, 128, 0))
 
     def set_pixel(self, position, color):
         if 0 <= position < self.strip.numPixels():

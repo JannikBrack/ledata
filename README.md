@@ -11,6 +11,20 @@ Die Linienauswahl wird aus `meta.json` aufgebaut. Nach der Linienwahl zeigt die
 Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.
 Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
+Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
+gesperrter Abschnitt zwischen zwei benachbarten Haltestellen festgelegt werden.
+Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
+Die Linienauswahl markiert die betroffene Linie mit einem Warnsymbol. In der
+Fahrtübersicht enden die Live-Fahrten an den beiden Sperrhaltestellen; die
+Richtungsfilter folgen diesen neuen Zielen und zeigen den Fußweg zur
+Haltestelle auf der anderen Seite der Baustelle an. Der gesperrte
+Streckenabschnitt wird auf dem LED-Streifen orange markiert.
+
+Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
+nächsten Live-Start fragt die Anwendung, ob die gespeicherte Baustelle noch
+besteht. In der UI wird sie mit „Ja“ übernommen und mit „Nein“ entfernt;
+im Terminal wird entsprechend `j` oder `n` eingegeben. Die Datei enthält
+Laufzeitstatus und wird deshalb nicht von Git erfasst.
 Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
 bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
 pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge

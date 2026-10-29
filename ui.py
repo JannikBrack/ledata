@@ -78,8 +78,39 @@ def filter_trains(
     ]
 
 
+def walking_instruction(
+    route: Route,
+    train: Train,
+    closure: tuple[int, int] | None,
+) -> str:
+    if closure is None:
+        return ""
+    destination_id = train.trip.stops[-1].station_id
+    other_terminal = next(
+        (station_id for station_id in closure if station_id != destination_id),
+        None,
+    )
+    if other_terminal is None:
+        return ""
+    return f"Zu Fuß bis {_station_name(route, other_terminal)}"
+
+
+def route_direction_destination_ids(route: Route) -> tuple[int, int]:
+    if route.closed_section is not None:
+        return route.closed_section
+    if not route.stations:
+        raise ValueError(f"Route {route.id} has no stations")
+    return route.stations[0].id, route.stations[-1].id
+
+
 class TramUI:
-    def __init__(self, root, routes: list[Route], controller: Controller):
+    def __init__(
+        self,
+        root,
+        routes: list[Route],
+        controller: Controller,
+        closure_store=None,
+    ):
         import tkinter as tk
         from tkinter import messagebox, ttk
 
@@ -89,6 +120,7 @@ class TramUI:
         self.root = root
         self.routes = routes
         self.controller = controller
+        self.closure_store = closure_store
         self.route: Route | None = None
         self.screen = "routes"
         self.direction_id: int | None = None
@@ -102,6 +134,7 @@ class TramUI:
         self.root.configure(background="#f3f5f7")
         self.root.bind("<Escape>", lambda _event: self.go_back())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self._confirm_saved_closures()
         self.show_routes()
         self.root.after(1000, self.refresh)
 
@@ -158,9 +191,17 @@ class TramUI:
             return
 
         for index, route in enumerate(self.routes):
+            card = tk.Frame(body, background="#f3f5f7")
+            card.grid(
+                row=index // 2,
+                column=index % 2,
+                sticky="nsew",
+                padx=6,
+                pady=6,
+            )
             tk.Button(
-                body,
-                text=route.name,
+                card,
+                text=f"⚠ {route.name}" if route.closed_section else route.name,
                 command=lambda route_id=route.id: self.show_trains(route_id),
                 background=self._color(route.color),
                 foreground="white",
@@ -168,13 +209,154 @@ class TramUI:
                 activeforeground="white",
                 font=("TkDefaultFont", 20, "bold"),
                 padx=16,
-                pady=16,
+                pady=12,
                 wraplength=320,
-            ).grid(row=index // 2, column=index % 2, sticky="nsew", padx=6, pady=6)
+            ).pack(fill="both", expand=True)
+            if self.closure_store is not None:
+                tk.Button(
+                    card,
+                    text=(
+                        "Baustelle bearbeiten"
+                        if route.closed_section
+                        else "Baustelle eintragen"
+                    ),
+                    command=lambda route_id=route.id: self.show_closure_editor(route_id),
+                    font=("TkDefaultFont", 13, "bold"),
+                    padx=8,
+                    pady=8,
+                ).pack(fill="x", pady=(5, 0))
         for column in range(2):
             body.grid_columnconfigure(column, weight=1)
         for row in range((len(self.routes) + 1) // 2):
             body.grid_rowconfigure(row, weight=1)
+
+    def _confirm_saved_closures(self):
+        if self.closure_store is None:
+            return
+        for route in self.routes:
+            closure = self.closure_store.get(route.id)
+            if closure is None:
+                continue
+            start_name = _station_name(route, closure[0])
+            end_name = _station_name(route, closure[1])
+            keep = self.messagebox.askyesnocancel(
+                "Baustelle bestätigen",
+                (
+                    f"Gibt es die Baustelle zwischen {start_name} und "
+                    f"{end_name} auf {route.name} noch?"
+                ),
+                parent=self.root,
+            )
+            if keep is False:
+                try:
+                    self.closure_store.set(route.id, None)
+                except OSError as exc:
+                    self.messagebox.showerror(
+                        "Baustelle nicht entfernt",
+                        str(exc),
+                        parent=self.root,
+                    )
+                    continue
+                route.set_closed_section(None)
+
+    def show_closure_editor(self, route_id: int):
+        route = next(route for route in self.routes if route.id == route_id)
+        self.route = route
+        self.screen = "closure"
+        self._clear()
+        self._header(f"Baustelle · {route.name}", "Zurück")
+
+        tk = self.tk
+        ttk = self.ttk
+        body = tk.Frame(self.root, background="#f3f5f7", padx=18, pady=18)
+        body.pack(fill="both", expand=True)
+        tk.Label(
+            body,
+            text="Gesperrten Abschnitt auswählen:",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 18, "bold"),
+        ).pack(anchor="w", pady=(0, 10))
+
+        stations = route.stations
+        self._closure_choices = {}
+        for first, second in zip(stations, stations[1:]):
+            first_name = _station_name(route, first.id)
+            second_name = _station_name(route, second.id)
+            label = f"{first_name} ↔ {second_name}"
+            self._closure_choices[label] = (first.id, second.id)
+        current = route.closed_section
+        selected_label = next(
+            (
+                label
+                for label, station_ids in self._closure_choices.items()
+                if station_ids == current or station_ids[::-1] == current
+            ),
+            "",
+        )
+        self._closure_choice = tk.StringVar(value=selected_label)
+        selector = ttk.Combobox(
+            body,
+            textvariable=self._closure_choice,
+            values=list(self._closure_choices),
+            state="readonly",
+            font=("TkDefaultFont", 16),
+        )
+        selector.pack(fill="x", pady=(0, 16))
+
+        tk.Button(
+            body,
+            text="Baustelle speichern",
+            command=lambda: self._save_closure(route),
+            font=("TkDefaultFont", 16, "bold"),
+            padx=14,
+            pady=12,
+        ).pack(anchor="w", pady=5)
+        if current is not None:
+            tk.Button(
+                body,
+                text="Baustelle entfernen",
+                command=lambda: self._remove_closure(route),
+                font=("TkDefaultFont", 16, "bold"),
+                padx=14,
+                pady=12,
+            ).pack(anchor="w", pady=5)
+
+    def _save_closure(self, route: Route):
+        label = self._closure_choice.get()
+        station_ids = self._closure_choices.get(label)
+        if station_ids is None:
+            self.messagebox.showerror(
+                "Baustelle nicht gespeichert",
+                "Bitte einen Streckenabschnitt auswählen.",
+                parent=self.root,
+            )
+            return
+        try:
+            if self.closure_store is not None:
+                self.closure_store.set(route.id, station_ids)
+            route.set_closed_section(station_ids)
+        except OSError as exc:
+            self.messagebox.showerror(
+                "Baustelle nicht gespeichert",
+                str(exc),
+                parent=self.root,
+            )
+            return
+        self.show_routes()
+
+    def _remove_closure(self, route: Route):
+        try:
+            if self.closure_store is not None:
+                self.closure_store.set(route.id, None)
+            route.set_closed_section(None)
+        except OSError as exc:
+            self.messagebox.showerror(
+                "Baustelle nicht entfernt",
+                str(exc),
+                parent=self.root,
+            )
+            return
+        self.show_routes()
 
     @staticmethod
     def _color(rgb: tuple[int, int, int]) -> str:
@@ -193,11 +375,10 @@ class TramUI:
         controls = tk.Frame(self.root, background="#f3f5f7", padx=10, pady=2)
         controls.pack(fill="x")
 
-        endpoints = self.route.stations
+        endpoints = route_direction_destination_ids(self.route)
         options = {"Alle Richtungen": None}
-        if endpoints:
-            options[f"Nach {_station_name(self.route, endpoints[0].id)}"] = endpoints[0].id
-            options[f"Nach {_station_name(self.route, endpoints[-1].id)}"] = endpoints[-1].id
+        for station_id in endpoints:
+            options[f"Nach {_station_name(self.route, station_id)}"] = station_id
         self._filter_buttons = {}
         for label, direction_id in options.items():
             button = tk.Button(
@@ -230,7 +411,7 @@ class TramUI:
         self._refresh_train_rows()
 
     def _build_train_table(self, parent, ttk):
-        columns = ("journey", "delay", "departure", "arrival", "action")
+        columns = ("journey", "walk", "delay", "departure", "arrival", "action")
         self._tree = ttk.Treeview(
             parent,
             columns=columns,
@@ -240,11 +421,13 @@ class TramUI:
             cursor="hand2",
         )
         self._tree.heading("journey", text="Herkunft → Ziel")
+        self._tree.heading("walk", text="Fußweg bei Baustelle")
         self._tree.heading("delay", text="Verspätung")
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
         self._tree.heading("action", text="")
-        self._tree.column("journey", width=378, anchor="w", stretch=False)
+        self._tree.column("journey", width=270, anchor="w", stretch=False)
+        self._tree.column("walk", width=220, anchor="w", stretch=False)
         self._tree.column("delay", width=81, anchor="center", stretch=False)
         self._tree.column("departure", width=81, anchor="center", stretch=False)
         self._tree.column("arrival", width=81, anchor="center", stretch=False)
@@ -275,8 +458,9 @@ class TramUI:
 
     def _resize_train_columns(self, event):
         table_width = event.width
-        journey_width = table_width // 2
-        remaining_width = table_width - journey_width
+        journey_width = round(table_width * 0.35)
+        walk_width = round(table_width * 0.28)
+        remaining_width = table_width - journey_width - walk_width
         other_columns = (
             ("delay", 120),
             ("departure", 120),
@@ -292,6 +476,7 @@ class TramUI:
                 width = round(remaining_width * weight / total_weight)
                 assigned_width += width
             self._tree.column(column, width=width)
+        self._tree.column("walk", width=walk_width)
         self._tree.column("journey", width=journey_width)
 
     def _select_direction(self, direction_id: int | None):
@@ -341,6 +526,11 @@ class TramUI:
             info = train_info(self.route, train)
             values = (
                 f"{info.origin} → {info.destination}",
+                walking_instruction(
+                    self.route,
+                    train,
+                    self.route.closed_section,
+                ),
                 self._format_delay(info.current_delay),
                 self._format_time(info.departure),
                 self._format_time(info.arrival),
@@ -433,6 +623,8 @@ class TramUI:
         if self.screen == "detail" and self.route is not None:
             self.controller.select_train(None)
             self.show_trains(self.route.id)
+        elif self.screen == "closure":
+            self.show_routes()
         elif self.screen == "trains":
             self.show_routes()
 
@@ -456,11 +648,11 @@ class TramUI:
         self.close()
 
 
-def run_ui(routes: list[Route], controller: Controller):
+def run_ui(routes: list[Route], controller: Controller, closure_store=None):
     import tkinter as tk
 
     root = tk.Tk()
-    app = TramUI(root, routes, controller)
+    app = TramUI(root, routes, controller, closure_store)
     errors = Queue()
 
     def run_controller():
