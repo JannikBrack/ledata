@@ -554,6 +554,7 @@ class Controller():
     selected_direction: tuple[int, int] | None = None
     selected_route_id: int | None = None
     route_selection_required: bool = False
+    render_enabled: bool = True
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -565,6 +566,7 @@ class Controller():
         self.selected_direction = None
         self.selected_route_id = None
         self.route_selection_required = False
+        self.render_enabled = True
         self._selection_lock = threading.Lock()
         self._selection_generation = 0
         self._selection_changed = threading.Event()
@@ -843,8 +845,9 @@ class Controller():
         for route in self.routes:
             for train in route.trains:
                 train.minute_value = minute_value
-        self.reset_strip()
-        self.strip.show()
+        if self.render_enabled:
+            self.reset_strip()
+            self.strip.show()
         if self.trip_source is not None:
             self._live_thread = threading.Thread(
                 target=self._live_worker,
@@ -861,7 +864,8 @@ class Controller():
             if self.ticks % ticks_per_resync == 0:
                 # regelmaessiger Abgleich, damit sich Rundungsfehler nicht aufsummieren
                 self.sync_trains(log_arrivals=True)
-            self.reset_strip()
+            if self.render_enabled:
+                self.reset_strip()
             for route in self.routes:
                 if (
                     self.route_selection_required
@@ -869,8 +873,10 @@ class Controller():
                 ):
                     continue
                 self._move_trains(route)
-                self.draw(route)
-            self.strip.show()
+                if self.render_enabled:
+                    self.draw(route)
+            if self.render_enabled:
+                self.strip.show()
             time.sleep(self.tickinterval / 1000)
 
     def stop(self):

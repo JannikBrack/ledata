@@ -17,7 +17,8 @@ Im Live-Modus werden in der Touchscreen-Oberfläche nur Daten der ausgewählten
 Linie abgefragt. Auf der Linienauswahlseite bleibt der LED-Streifen aus und es
 werden keine Live-Abfragen ausgeführt. In der Linienübersicht leuchten alle
 aktiven Bahnen der gewählten Linie; in der Detailansicht nur die ausgewählte
-Bahn. Im Terminalbetrieb bleibt das bisherige Abrufverhalten bestehen.
+Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten protokolliert,
+der LED-Streifen wird dort jedoch nicht angesteuert.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
@@ -36,9 +37,9 @@ orange markiert.
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
 nächsten Live-Start fragt die Anwendung im Terminal, ob die gespeicherte
 Baustelle noch besteht. Mit `j` wird sie übernommen, mit `n` entfernt. Danach
-startet die Touchscreen-UI im Vollbild; im `--terminal`-Betrieb bleibt die
-textbasierte Steuerung aktiv. Die Datei enthält Laufzeitstatus und wird deshalb
-nicht von Git erfasst.
+startet die Touchscreen-UI im Vollbild. Der `--terminal`-Betrieb fragt nur die
+Baustellen ab und protokolliert den Prozess. Die Datei enthält Laufzeitstatus
+und wird deshalb nicht von Git erfasst.
 Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
 bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
 pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge
@@ -55,10 +56,10 @@ Bei einer Baustellen-Verbindung ist der Baustellenhinweis oberhalb der Liste
 sichtbar und erscheint zusätzlich an seiner Stelle in der Haltefolge; während
 des Fußwegs wird der Umstieg als aktuelle Position markiert.
 
-Mit `--terminal` bleibt der bisherige Terminalbetrieb verfügbar. Auf anderen
-Systemen kann die grafische Oberfläche mit `--ui` explizit gestartet werden,
-sofern eine Desktop-Anzeige vorhanden ist. `--dry-run` behält standardmäßig
-den bisherigen Terminal-Simulationsmodus bei.
+Mit `--terminal` wird keine LED-Anzeige gestartet; der Prozess wird im Terminal
+protokolliert und gespeicherte Baustellen werden abgefragt. Auf anderen Systemen
+kann die grafische Oberfläche mit `--ui` explizit gestartet werden, sofern eine
+Desktop-Anzeige vorhanden ist. `--dry-run` startet ohne LED-Hardware.
 
 ```bash
 python3 main.py

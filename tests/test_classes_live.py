@@ -295,6 +295,18 @@ class CyclicRegressionTests(unittest.TestCase):
 
 
 class ControllerLiveTests(unittest.TestCase):
+    def test_disabled_rendering_does_not_write_to_led_strip(self):
+        route = make_route()
+        strip = FakeStrip(15)
+        strip.setPixelColor(0, 0xFF0000)
+        controller = Controller([route], strip)
+        controller.render_enabled = False
+
+        with patch("classes.time.sleep", side_effect=lambda _seconds: controller.stop()):
+            controller.start()
+
+        self.assertEqual(strip.getPixelColor(0), 0xFF0000)
+
     def test_ui_selection_waits_for_a_route_and_stops_fetching_when_deselected(self):
         route = make_route()
         controller = Controller([route], FakeStrip(15))
