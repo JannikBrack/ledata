@@ -69,12 +69,31 @@ def build_trips(fahrplan, route_id, day):
 def journeys_to_trips(journeys):
     """Wandelt Live-Fahrten (live_feed.LiveJourney) in einmalige Trips um.
 
-    Die Echtzeit (Prognose) steckt schon in arrival/departure, delay bleibt 0.
+    Die Prognosezeiten werden als Fahrzeiten gespeichert; die Abweichung vom
+    Fahrplan bleibt separat pro Halt für die Verspätungsanzeige erhalten.
     """
     trips = []
     for journey in journeys:
-        stops = [Stop(call.station_id, call.arrival, call.departure, 0) for call in journey.calls]
-        trips.append(Trip(id=journey.journey_ref, train_id=journey.journey_ref, stops=stops, cyclic=False))
+        stops = [
+            Stop(
+                call.station_id,
+                call.arrival,
+                call.departure,
+                reported_delay_seconds=max(
+                    0.0,
+                    (call.departure - call.planned_departure).total_seconds(),
+                ),
+            )
+            for call in journey.calls
+        ]
+        trips.append(
+            Trip(
+                id=journey.journey_ref,
+                train_id=journey.journey_ref,
+                stops=stops,
+                cyclic=False,
+            )
+        )
     return trips
 
 

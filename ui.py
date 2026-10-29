@@ -17,6 +17,7 @@ class TrainInfo:
     destination: str
     departure: datetime
     arrival: datetime
+    current_delay: timedelta
     position: str
     direction_destination: str
 
@@ -46,12 +47,19 @@ def train_info(route: Route, train: Train) -> TrainInfo:
     stops = train.trip.stops
     offset = train.cycle_offset if train.trip.cyclic else timedelta(0)
     destination_id = direction_destination_id(route, train)
+    reported_delay = stops[train.stop_index].reported_delay_seconds
+    delay_seconds = (
+        reported_delay
+        if reported_delay is not None
+        else train.trip.delay_at(train.stop_index).total_seconds()
+    )
     return TrainInfo(
         train_id=train.trip.id,
         origin=_station_name(route, stops[0].station_id),
         destination=_station_name(route, stops[-1].station_id),
         departure=train.trip.departure_at(0) + offset,
         arrival=train.trip.arrival_at(len(stops) - 1) + offset,
+        current_delay=timedelta(seconds=max(0.0, delay_seconds)),
         position=train_position(route, train),
         direction_destination=_station_name(route, destination_id),
     )
@@ -209,21 +217,42 @@ class TramUI:
 
         table_frame = tk.Frame(self.root, padx=10, pady=6)
         table_frame.pack(fill="both", expand=True)
-        columns = ("journey", "departure", "arrival")
+        columns = ("journey", "delay", "departure", "arrival", "action")
         self._tree = ttk.Treeview(
             table_frame,
             columns=columns,
             show="headings",
             selectmode="browse",
+            style="Touch.Treeview",
+            cursor="hand2",
         )
         self._tree.heading("journey", text="Herkunft → Ziel")
+        self._tree.heading("delay", text="Verspätung")
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
-        self._tree.column("journey", width=440, anchor="w", stretch=True)
-        self._tree.column("departure", width=125, anchor="center", stretch=False)
-        self._tree.column("arrival", width=125, anchor="center", stretch=False)
-        ttk.Style().configure("Treeview", rowheight=56, font=("TkDefaultFont", 14))
-        ttk.Style().configure("Treeview.Heading", font=("TkDefaultFont", 13, "bold"))
+        self._tree.heading("action", text="")
+        self._tree.column("journey", width=310, anchor="w", stretch=True)
+        self._tree.column("delay", width=95, anchor="center", stretch=False)
+        self._tree.column("departure", width=95, anchor="center", stretch=False)
+        self._tree.column("arrival", width=95, anchor="center", stretch=False)
+        self._tree.column("action", width=160, anchor="center", stretch=False)
+        style = ttk.Style()
+        style.configure(
+            "Touch.Treeview",
+            rowheight=72,
+            font=("TkDefaultFont", 14),
+            background="#ffffff",
+            fieldbackground="#ffffff",
+            foreground="#263238",
+        )
+        style.map(
+            "Touch.Treeview",
+            background=[("selected", "#246c98")],
+            foreground=[("selected", "white")],
+        )
+        style.configure("Touch.Treeview.Heading", font=("TkDefaultFont", 13, "bold"))
+        self._tree.tag_configure("row_even", background="#ffffff")
+        self._tree.tag_configure("row_odd", background="#eaf1f6")
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self._tree.yview)
         self._tree.configure(yscrollcommand=scrollbar.set)
         self._tree.pack(side="left", fill="both", expand=True)
@@ -268,18 +297,21 @@ class TramUI:
         )
         visible_ids = set()
         row_trains = {}
-        for train in trains:
+        for index, train in enumerate(trains):
             row_id = str(train.trip.id)
             info = train_info(self.route, train)
             values = (
                 f"{info.origin} → {info.destination}",
+                self._format_delay(info.current_delay),
                 self._format_time(info.departure),
                 self._format_time(info.arrival),
+                "Tippen: Details →",
             )
+            tags = ("row_even" if index % 2 == 0 else "row_odd",)
             if self._tree.exists(row_id):
-                self._tree.item(row_id, values=values)
+                self._tree.item(row_id, values=values, tags=tags)
             else:
-                self._tree.insert("", "end", iid=row_id, values=values)
+                self._tree.insert("", "end", iid=row_id, values=values, tags=tags)
             visible_ids.add(row_id)
             row_trains[row_id] = train
         for row_id in self._tree.get_children():
@@ -312,11 +344,11 @@ class TramUI:
         content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
         content.pack(fill="both", expand=True)
         self._detail_labels = {}
-        for key in ("journey", "times", "position", "direction"):
+        for key in ("journey", "times", "delay", "position", "direction"):
             label = self.tk.Label(
                 content,
                 background="#f3f5f7",
-                font=("TkDefaultFont", 20 if key == "position" else 17),
+                font=("TkDefaultFont", 20 if key in ("delay", "position") else 17),
                 anchor="w",
                 justify="left",
                 wraplength=740,
@@ -328,6 +360,14 @@ class TramUI:
     @staticmethod
     def _format_time(value: datetime) -> str:
         return value.astimezone().strftime("%H:%M")
+
+    @staticmethod
+    def _format_delay(value: timedelta) -> str:
+        seconds = max(0.0, value.total_seconds())
+        if seconds == 0:
+            return "Pünktlich"
+        minutes = max(1, round(seconds / 60))
+        return f"+{minutes} min"
 
     def _refresh_detail(self):
         if self.screen != "detail" or self.route is None:
@@ -349,6 +389,10 @@ class TramUI:
                 f"Abfahrt {self._format_time(info.departure)}"
                 f" · Ankunft {self._format_time(info.arrival)}"
             )
+        )
+        self._detail_labels["delay"].configure(
+            text=f"Verspätung: {self._format_delay(info.current_delay)}",
+            foreground="#b33b2e" if info.current_delay else "#267246",
         )
         self._detail_labels["position"].configure(text=f"Position: {info.position}")
         self._detail_labels["direction"].configure(

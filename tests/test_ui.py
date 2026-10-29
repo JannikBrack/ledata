@@ -5,7 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 from classes import Controller, Route, Train, Trip, Stop
 from led_backend import FakeStrip
-from ui import filter_trains, train_info
+from live_feed import LiveCall, LiveJourney
+from main import journeys_to_trips
+from ui import TramUI, filter_trains, train_info
 
 
 START = datetime(2026, 1, 1, 5, 0, tzinfo=timezone.utc)
@@ -64,6 +66,76 @@ class TrainInfoTests(unittest.TestCase):
         self.assertEqual(info.arrival, START + timedelta(seconds=140))
         self.assertEqual(info.position, "Zwischen Moosweiher und Diakoniekrankenhaus")
         self.assertEqual(info.direction_destination, "Moosgrund")
+
+    def test_summary_uses_cumulative_schedule_delay_at_current_stop(self):
+        train = make_train("journey-1")
+        route = make_route([train])
+        train.trip.stops[0].delay_seconds = 60
+        train.trip.stops[1].delay_seconds = 90
+        train.stop_index = 1
+
+        self.assertEqual(
+            train_info(route, train).current_delay,
+            timedelta(seconds=150),
+        )
+
+    def test_summary_uses_reported_delay_at_current_live_stop(self):
+        journey = LiveJourney(
+            journey_ref="live-1",
+            line_ref="line-7",
+            line_name="Linie 7",
+            destination="Moosgrund",
+            calls=[
+                LiveCall(
+                    0,
+                    START,
+                    START + timedelta(seconds=5),
+                    START,
+                    START + timedelta(seconds=10),
+                ),
+                LiveCall(
+                    1,
+                    START + timedelta(minutes=10, seconds=180),
+                    START + timedelta(minutes=10, seconds=190),
+                    START + timedelta(minutes=10),
+                    START + timedelta(minutes=10, seconds=10),
+                ),
+                LiveCall(
+                    2,
+                    START + timedelta(minutes=20, seconds=600),
+                    START + timedelta(minutes=20, seconds=610),
+                    START + timedelta(minutes=20),
+                    START + timedelta(minutes=20, seconds=10),
+                ),
+            ],
+        )
+        trip = journeys_to_trips([journey])[0]
+        train = Train("live-1", trip)
+        train.stop_index = 1
+        train.at_station = True
+        route = make_route([train])
+
+        info = train_info(route, train)
+
+        self.assertEqual(info.current_delay, timedelta(seconds=180))
+        self.assertEqual(trip.stops[1].delay_seconds, 0)
+        self.assertEqual(trip.stops[1].reported_delay_seconds, 180)
+        self.assertEqual(trip.stops[0].reported_delay_seconds, 0)
+
+    def test_delay_format_uses_minutes_and_marks_punctual_trains(self):
+        self.assertEqual(TramUI._format_delay(timedelta(0)), "Pünktlich")
+        self.assertEqual(
+            TramUI._format_delay(timedelta(seconds=61)),
+            "+1 min",
+        )
+        self.assertEqual(
+            TramUI._format_delay(timedelta(seconds=90)),
+            "+2 min",
+        )
+        self.assertEqual(
+            TramUI._format_delay(timedelta(seconds=-10)),
+            "Pünktlich",
+        )
 
     def test_direction_filter_uses_current_direction_and_keeps_all_option(self):
         outbound = make_train("outbound", direction=1)

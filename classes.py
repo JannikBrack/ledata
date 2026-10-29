@@ -34,17 +34,29 @@ class Stop():
 
     delay_seconds ist die Verspaetung, die an diesem Halt entsteht. Sie wirkt
     kumulativ, verschiebt also auch alle folgenden Halte des Umlaufs.
+    reported_delay_seconds speichert optional die Live-Abweichung an diesem Halt.
     """
     station_id: int
     arrival: datetime
     departure: datetime
     delay_seconds: float
+    reported_delay_seconds: float | None
 
-    def __init__(self, station_id, arrival, departure, delay_seconds=0.0) -> None:
+    def __init__(
+        self,
+        station_id,
+        arrival,
+        departure,
+        delay_seconds=0.0,
+        reported_delay_seconds=None,
+    ) -> None:
         self.station_id = station_id
         self.arrival = parse_utc(arrival)
         self.departure = parse_utc(departure)
         self.delay_seconds = float(delay_seconds)
+        self.reported_delay_seconds = (
+            None if reported_delay_seconds is None else float(reported_delay_seconds)
+        )
 
     @property
     def dwell_seconds(self) -> float:

@@ -11,6 +11,10 @@ Die Linienauswahl wird aus `meta.json` aufgebaut. Nach der Linienwahl zeigt die
 Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.
 Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
+Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
+bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
+pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge
+zeigen mit „Tippen: Details →“ ihre Auswahlfunktion.
 Die Detailansicht ergänzt die aktuelle Position; während sie geöffnet ist,
 zeigt der LED-Streifen nur die ausgewählte Bahn. Zeiten werden in der lokalen
 Zeitzone des Raspberry Pi angezeigt.
