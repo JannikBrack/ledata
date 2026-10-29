@@ -805,6 +805,26 @@ class DirectionFilterUITests(unittest.TestCase):
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
+    def test_stopped_station_blinks_in_route_color(self):
+        train = make_train("stopped", cyclic=True)
+        train.position = 5
+        train.at_station = True
+        route = make_route([train])
+        route.color = (19, 165, 56)
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+
+        controller.ticks = 0
+        controller.draw(route)
+        self.assertEqual(strip.getPixelColor(5), 0x13A538)
+        self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(10), 0xFFFFFF)
+
+        controller.reset_strip()
+        controller.ticks = 8
+        controller.draw(route)
+        self.assertEqual(strip.getPixelColor(5), 0)
+
     def test_direction_selection_only_renders_trains_heading_to_selected_endpoint(self):
         outbound = make_train("outbound", direction=1, cyclic=True)
         inbound = make_train("inbound", direction=-1, cyclic=True)

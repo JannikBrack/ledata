@@ -656,8 +656,10 @@ class Controller():
 
         for station in route.stations:
             if station.position in stopped_positions:
-                # TEMPORAER: waehrend der Haltezeit blinkt die Haltestelle rot
-                self.set_pixel(station.position, Color(255, 0, 0) if blink_on else Color(0, 0, 0))
+                self.set_pixel(
+                    station.position,
+                    Color(*route.color) if blink_on else Color(0, 0, 0),
+                )
             else:
                 self.set_pixel(station.position, Color(255, 255, 255))
 
