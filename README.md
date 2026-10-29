@@ -16,10 +16,13 @@ gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
 Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
 Die Linienauswahl markiert die betroffene Linie mit einem Warnsymbol. In der
-Fahrtübersicht enden die Live-Fahrten an den beiden Sperrhaltestellen; die
-Richtungsfilter folgen diesen neuen Zielen und zeigen den Fußweg zur
-Haltestelle auf der anderen Seite der Baustelle an. Der gesperrte
-Streckenabschnitt wird auf dem LED-Streifen orange markiert.
+Fahrtübersicht bleiben die regulären Endstationen und Richtungsfilter erhalten.
+Die beiden zugänglichen Teilfahrten werden zu einer Verbindung zwischen den
+regulären Endstationen zusammengeführt, wenn der Anschluss nach mindestens
+fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht
+als vollständige Verbindung; die echten Teilfahrten bleiben auf den LEDs
+getrennt sichtbar. Der gesperrte Streckenabschnitt wird auf dem LED-Streifen
+orange markiert.
 
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
 nächsten Live-Start fragt die Anwendung, ob die gespeicherte Baustelle noch

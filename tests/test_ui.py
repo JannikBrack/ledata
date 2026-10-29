@@ -7,17 +7,18 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from classes import Controller, Route, Train, Trip, Stop
+from classes import Controller, Route, RouteConnection, Train, Trip, Stop
 from closures import ClosureStore
 from led_backend import FakeStrip
 from live_feed import LiveCall, LiveJourney
 from main import journeys_to_trips
 from ui import (
     TramUI,
+    filter_connections,
     filter_trains,
     route_direction_destination_ids,
     train_info,
-    walking_instruction,
+    walking_connection_instruction,
 )
 
 
@@ -157,15 +158,45 @@ class TrainInfoTests(unittest.TestCase):
         self.assertEqual(filter_trains(route, route.trains, 2), [outbound])
         self.assertEqual(filter_trains(route, route.trains, 0), [inbound])
 
-    def test_closure_destination_lists_show_walking_terminal(self):
-        outbound = make_train("outbound", direction=1)
-        route = make_route([outbound])
+    def test_closed_route_keeps_outer_direction_destinations(self):
+        route = make_route()
         route.closed_section = (1, 2)
+        toward_moosgrund = RouteConnection(
+            id="outbound",
+            origin_station_id=0,
+            destination_station_id=2,
+            first_boundary_station_id=1,
+            second_boundary_station_id=2,
+            departure=START,
+            arrival=START + timedelta(minutes=20),
+            transfer_arrival=START + timedelta(minutes=10),
+            transfer_departure=START + timedelta(minutes=15),
+            delay_seconds=0,
+        )
+        toward_moosweiher = RouteConnection(
+            id="inbound",
+            origin_station_id=2,
+            destination_station_id=0,
+            first_boundary_station_id=2,
+            second_boundary_station_id=1,
+            departure=START,
+            arrival=START + timedelta(minutes=20),
+            transfer_arrival=START + timedelta(minutes=10),
+            transfer_departure=START + timedelta(minutes=15),
+            delay_seconds=0,
+        )
 
-        self.assertEqual(route_direction_destination_ids(route), (1, 2))
+        self.assertEqual(route_direction_destination_ids(route), (0, 2))
         self.assertEqual(
-            walking_instruction(route, outbound, route.closed_section),
-            "Zu Fuß bis Diakoniekrankenhaus",
+            filter_connections(
+                [toward_moosgrund, toward_moosweiher],
+                2,
+            ),
+            [toward_moosgrund],
+        )
+        self.assertEqual(
+            walking_connection_instruction(route, toward_moosgrund),
+            "Zu Fuß: Diakoniekrankenhaus → Moosgrund",
         )
 
 

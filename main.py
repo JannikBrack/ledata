@@ -9,7 +9,15 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from classes import Route, Train, Trip, Stop, Controller
+from classes import (
+    Controller,
+    Route,
+    RouteConnection,
+    RouteLiveData,
+    Stop,
+    Train,
+    Trip,
+)
 from closures import ClosureStore
 from led_backend import PixelStrip, FakeStrip, HAVE_RPI
 from ui import run_ui
@@ -99,6 +107,24 @@ def journeys_to_trips(journeys):
     return trips
 
 
+def journeys_to_connections(connections):
+    return [
+        RouteConnection(
+            id=connection.id,
+            origin_station_id=connection.origin_station_id,
+            destination_station_id=connection.destination_station_id,
+            first_boundary_station_id=connection.first_boundary_station_id,
+            second_boundary_station_id=connection.second_boundary_station_id,
+            departure=connection.departure,
+            arrival=connection.arrival,
+            transfer_arrival=connection.transfer_arrival,
+            transfer_departure=connection.transfer_departure,
+            delay_seconds=connection.delay_seconds,
+        )
+        for connection in connections
+    ]
+
+
 def _format_log_time(value):
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -173,11 +199,17 @@ def build_live_source(meta, closure_store=None):
 
     def source(now):
         snapshot = feed.fetch(now)
-        for route_id, journeys in snapshot.items():
+        for route_id, route_snapshot in snapshot.items():
             route_config = route_configs.get(route_id)
             if route_config is not None:
-                _log_live_snapshot(route_config, journeys)
-        return {route_id: journeys_to_trips(journeys) for route_id, journeys in snapshot.items()}
+                _log_live_snapshot(route_config, route_snapshot.journeys)
+        return {
+            route_id: RouteLiveData(
+                journeys_to_trips(route_snapshot.journeys),
+                journeys_to_connections(route_snapshot.connections),
+            )
+            for route_id, route_snapshot in snapshot.items()
+        }
 
     return source
 

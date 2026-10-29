@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from queue import Empty, Queue
 from threading import Thread
 
-from classes import Controller, Route, Train
+from classes import Controller, Route, RouteConnection, Train
 
 
 @dataclass(frozen=True)
@@ -95,9 +95,29 @@ def walking_instruction(
     return f"Zu Fuß bis {_station_name(route, other_terminal)}"
 
 
+def walking_connection_instruction(
+    route: Route,
+    connection: RouteConnection,
+) -> str:
+    first = _station_name(route, connection.first_boundary_station_id)
+    second = _station_name(route, connection.second_boundary_station_id)
+    return f"Zu Fuß: {first} → {second}"
+
+
+def filter_connections(
+    connections: list[RouteConnection],
+    destination_id: int | None,
+) -> list[RouteConnection]:
+    if destination_id is None:
+        return list(connections)
+    return [
+        connection
+        for connection in connections
+        if connection.destination_station_id == destination_id
+    ]
+
+
 def route_direction_destination_ids(route: Route) -> tuple[int, int]:
-    if route.closed_section is not None:
-        return route.closed_section
     if not route.stations:
         raise ValueError(f"Route {route.id} has no stations")
     return route.stations[0].id, route.stations[-1].id
@@ -125,8 +145,10 @@ class TramUI:
         self.screen = "routes"
         self.direction_id: int | None = None
         self._row_trains: dict[str, Train] = {}
+        self._row_connections: dict[str, RouteConnection] = {}
         self._filter_buttons = {}
         self._detail_train_id: str | int | None = None
+        self._detail_connection_id: str | None = None
         self._detail_labels = {}
 
         self.root.title("Straßenbahn-Anzeige")
@@ -445,6 +467,7 @@ class TramUI:
         )
         self._empty_label.pack(anchor="w", padx=12, pady=(0, 8))
         self._row_trains = {}
+        self._row_connections = {}
         self._refresh_train_rows()
 
     def _build_train_table(self, parent, ttk):
@@ -538,19 +561,33 @@ class TramUI:
     def _refresh_train_rows(self):
         if self.screen != "trains" or self.route is None:
             return
-        trains = filter_trains(
-            self.route,
-            self.route.trains,
-            self.direction_id,
-        )
-        self._refresh_train_table(trains)
+        if self.route.closed_section is not None:
+            visible_items = filter_connections(
+                self.route.connections,
+                self.direction_id,
+            )
+            self._refresh_connection_table(visible_items)
+            empty_text = (
+                "Es sind aktuell keine vollständigen Verbindungen in dieser "
+                "Richtung verfügbar."
+                if self.direction_id is not None
+                else "Es sind aktuell keine vollständigen Verbindungen verfügbar."
+            )
+        else:
+            visible_items = filter_trains(
+                self.route,
+                self.route.trains,
+                self.direction_id,
+            )
+            self._refresh_train_table(visible_items)
+            empty_text = (
+                "Es sind aktuell keine Bahnen in dieser Richtung verfügbar."
+                if self.direction_id is not None
+                else "Es sind aktuell keine Bahnen verfügbar."
+            )
 
-        self._empty_label.configure(
-            text="Es sind aktuell keine Bahnen in dieser Richtung verfügbar."
-            if self.direction_id is not None
-            else "Es sind aktuell keine Bahnen verfügbar."
-        )
-        if trains:
+        self._empty_label.configure(text=empty_text)
+        if visible_items:
             self._empty_label.pack_forget()
         else:
             self._empty_label.pack(anchor="w", padx=12, pady=(0, 8))
@@ -584,20 +621,83 @@ class TramUI:
             if row_id not in visible_ids:
                 self._tree.delete(row_id)
         self._row_trains = row_trains
+        self._row_connections = {}
+
+    def _refresh_connection_table(self, connections: list[RouteConnection]):
+        visible_ids = set()
+        row_connections = {}
+        for index, connection in enumerate(connections):
+            row_id = f"connection-{connection.id}"
+            values = (
+                (
+                    f"{_station_name(self.route, connection.origin_station_id)}"
+                    f" → {_station_name(self.route, connection.destination_station_id)}"
+                ),
+                walking_connection_instruction(self.route, connection),
+                self._format_delay(timedelta(seconds=connection.delay_seconds)),
+                self._format_time(connection.departure),
+                self._format_time(connection.arrival),
+                "Tippen: Details →",
+            )
+            tags = ("row_even" if index % 2 == 0 else "row_odd",)
+            if self._tree.exists(row_id):
+                self._tree.item(row_id, values=values, tags=tags)
+            else:
+                self._tree.insert("", "end", iid=row_id, values=values, tags=tags)
+            visible_ids.add(row_id)
+            row_connections[row_id] = connection
+        for row_id in self._tree.get_children():
+            if row_id not in visible_ids:
+                self._tree.delete(row_id)
+        self._row_trains = {}
+        self._row_connections = row_connections
 
     def _train_selected(self, _event=None):
         selection = self._tree.selection()
-        if selection and selection[0] in self._row_trains:
-            self.show_train_detail(self._row_trains[selection[0]].trip.id)
+        if not selection:
+            return
+        row_id = selection[0]
+        if row_id in self._row_connections:
+            self.show_connection_detail(self._row_connections[row_id])
+        elif row_id in self._row_trains:
+            self.show_train_detail(self._row_trains[row_id].trip.id)
 
     def show_train_detail(self, train_id: str | int):
         if self.route is None:
             return
         self._detail_train_id = train_id
+        self._detail_connection_id = None
         self.controller.select_train(self.route.id, train_id)
         self.screen = "detail"
         self._clear()
         self._header(f"{self.route.name} · Bahn {train_id}", "Bahnauswahl")
+        content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
+        content.pack(fill="both", expand=True)
+        self._detail_labels = {}
+        for key in ("journey", "times", "delay", "position", "direction"):
+            label = self.tk.Label(
+                content,
+                background="#f3f5f7",
+                font=("TkDefaultFont", 20 if key in ("delay", "position") else 17),
+                anchor="w",
+                justify="left",
+                wraplength=740,
+            )
+            label.pack(fill="x", pady=8)
+            self._detail_labels[key] = label
+        self._refresh_detail()
+
+    def show_connection_detail(self, connection: RouteConnection):
+        if self.route is None:
+            return
+        self._detail_connection_id = connection.id
+        self._detail_train_id = None
+        self.controller.select_train(None)
+        self.screen = "detail"
+        origin = _station_name(self.route, connection.origin_station_id)
+        destination = _station_name(self.route, connection.destination_station_id)
+        self._clear()
+        self._header(f"{self.route.name} · {origin} → {destination}", "Bahnauswahl")
         content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
         content.pack(fill="both", expand=True)
         self._detail_labels = {}
@@ -629,6 +729,59 @@ class TramUI:
     def _refresh_detail(self):
         if self.screen != "detail" or self.route is None:
             return
+        if self._detail_connection_id is not None:
+            connection = next(
+                (
+                    item
+                    for item in self.route.connections
+                    if item.id == self._detail_connection_id
+                ),
+                None,
+            )
+            if connection is None:
+                for label in self._detail_labels.values():
+                    label.configure(text="Verbindung aktuell nicht verfügbar.")
+                return
+            origin = _station_name(self.route, connection.origin_station_id)
+            destination = _station_name(
+                self.route, connection.destination_station_id
+            )
+            wait = max(
+                0,
+                round(
+                    (
+                        connection.transfer_departure
+                        - connection.transfer_arrival
+                    ).total_seconds()
+                    / 60
+                ),
+            )
+            self._detail_labels["journey"].configure(
+                text=f"{origin} → {destination}"
+            )
+            self._detail_labels["times"].configure(
+                text=(
+                    f"Abfahrt {self._format_time(connection.departure)}"
+                    f" · Weiterfahrt {self._format_time(connection.transfer_departure)}"
+                    f" · Ankunft {self._format_time(connection.arrival)}"
+                )
+            )
+            delay = timedelta(seconds=connection.delay_seconds)
+            self._detail_labels["delay"].configure(
+                text=f"Verspätung: {self._format_delay(delay)}",
+                foreground="#b33b2e" if delay else "#267246",
+            )
+            self._detail_labels["position"].configure(
+                text=(
+                    f"{walking_connection_instruction(self.route, connection)}"
+                    f" · Anschluss in {wait} min"
+                )
+            )
+            self._detail_labels["direction"].configure(
+                text=f"Fahrtrichtung: {destination}"
+            )
+            return
+
         train = next(
             (item for item in self.route.trains if item.trip.id == self._detail_train_id),
             None,

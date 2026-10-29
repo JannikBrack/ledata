@@ -4,6 +4,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from led_backend import PixelStrip, Color
@@ -203,6 +204,26 @@ class Trip():
         end = self.arrival_at(0) + offset + self.cycle
         # bei Verspaetung groesser als die Wendezeit bleibt keine Zeit fuer die Rueckfahrt
         return last, "fahrend", begin, max(begin, end)
+
+
+@dataclass(frozen=True)
+class RouteConnection:
+    id: str
+    origin_station_id: int
+    destination_station_id: int
+    first_boundary_station_id: int
+    second_boundary_station_id: int
+    departure: datetime
+    arrival: datetime
+    transfer_arrival: datetime
+    transfer_departure: datetime
+    delay_seconds: float
+
+
+@dataclass
+class RouteLiveData:
+    trips: list[Trip]
+    connections: list[RouteConnection]
 
 
 class Train():
@@ -413,6 +434,7 @@ class Route():
         self.trains = trains
 
         self.trips = trips or []
+        self.connections: list[RouteConnection] = []
 
         self.color = color
         self.closed_section: tuple[int, int] | None = None
@@ -506,7 +528,9 @@ class Controller():
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
-    trip_source: Callable[[datetime], dict[int, list[Trip]]] | None = None # liefert live {route_id: [Trip]}, darf werfen
+    trip_source: Callable[
+        [datetime], dict[int, list[Trip] | RouteLiveData]
+    ] | None = None # liefert live {route_id: [Trip]}, darf werfen
     live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
@@ -681,12 +705,19 @@ class Controller():
                 logger.warning("Unerwartete Live-Daten vom Typ %s ignoriert", type(snapshot))
                 continue
             for route in self.routes:
-                trips = snapshot.get(route.id)
-                if trips is None:
+                route_data = snapshot.get(route.id)
+                if route_data is None:
                     continue
                 previous_states = self._capture_arrival_states(route)
                 try:
+                    if isinstance(route_data, RouteLiveData):
+                        trips = route_data.trips
+                        connections = route_data.connections
+                    else:
+                        trips = list(route_data)
+                        connections = []
                     route.set_trips(list(trips), now, minute_value)
+                    route.connections = list(connections)
                     self._log_arrival_transitions(route, previous_states)
                 except Exception:
                     logger.exception("Live-Umlaeufe fuer Route %s konnten nicht angewendet werden", route.id)
