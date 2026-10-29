@@ -7,7 +7,13 @@ from datetime import datetime, timedelta
 from queue import Empty, Queue
 from threading import Thread
 
-from classes import Controller, Route, RouteConnection, Train
+from classes import (
+    Controller,
+    Route,
+    RouteConnection,
+    Train,
+    train_direction_destination_id,
+)
 
 
 @dataclass(frozen=True)
@@ -27,11 +33,7 @@ def _station_name(route: Route, station_id: int) -> str:
 
 
 def direction_destination_id(route: Route, train: Train) -> int:
-    if not route.stations:
-        raise ValueError(f"Route {route.id} has no stations")
-    if not train.trip.cyclic:
-        return train.trip.stops[-1].station_id
-    return route.stations[-1].id if train.direction >= 0 else route.stations[0].id
+    return train_direction_destination_id(route, train)
 
 
 def train_position(route: Route, train: Train) -> str:
@@ -195,6 +197,7 @@ class TramUI:
 
     def show_routes(self):
         self.controller.select_train(None)
+        self.controller.select_direction(None, None)
         self.route = None
         self.screen = "routes"
         self._clear()
@@ -424,6 +427,7 @@ class TramUI:
     def show_trains(self, route_id: int):
         self.route = next(route for route in self.routes if route.id == route_id)
         self.controller.select_train(None)
+        self.controller.select_direction(None, None)
         self.screen = "trains"
         self.direction_id = None
         self._clear()
@@ -540,7 +544,10 @@ class TramUI:
         self._tree.column("journey", width=journey_width)
 
     def _select_direction(self, direction_id: int | None):
+        if self.route is None:
+            return
         self.direction_id = direction_id
+        self.controller.select_direction(self.route.id, direction_id)
         self._update_filter_buttons()
         self._refresh_train_rows()
 

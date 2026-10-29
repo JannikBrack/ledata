@@ -230,6 +230,27 @@ class TrainTableLayoutTests(unittest.TestCase):
                 self.assertEqual(sum(resized_columns.values()), table_width)
 
 
+class DirectionFilterUITests(unittest.TestCase):
+    def test_direction_button_updates_controller_selection(self):
+        app = TramUI.__new__(TramUI)
+        app.route = make_route()
+        app.controller = MagicMock()
+        app._update_filter_buttons = MagicMock()
+        app._refresh_train_rows = MagicMock()
+
+        app._select_direction(2)
+        app._select_direction(None)
+
+        self.assertIsNone(app.direction_id)
+        self.assertEqual(
+            [
+                call.args
+                for call in app.controller.select_direction.call_args_list
+            ],
+            [(app.route.id, 2), (app.route.id, None)],
+        )
+
+
 class ClosureConfirmationTests(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
@@ -274,6 +295,62 @@ class ClosureConfirmationTests(unittest.TestCase):
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
+    def test_direction_selection_only_renders_trains_heading_to_selected_endpoint(self):
+        outbound = make_train("outbound", direction=1, cyclic=True)
+        inbound = make_train("inbound", direction=-1, cyclic=True)
+        outbound.position = 2
+        inbound.position = 8
+        route = make_route([outbound, inbound])
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+        controller.select_direction(route.id, 2)
+
+        controller.reset_strip()
+        controller.draw(route)
+
+        self.assertEqual(strip.getPixelColor(2), 0xFF0000)
+        self.assertEqual(strip.getPixelColor(8), 0)
+
+    def test_clearing_direction_selection_restores_all_trains(self):
+        outbound = make_train("outbound", direction=1, cyclic=True)
+        inbound = make_train("inbound", direction=-1, cyclic=True)
+        outbound.position = 2
+        inbound.position = 8
+        route = make_route([outbound, inbound])
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+        controller.select_direction(route.id, 2)
+        controller.select_direction(None, None)
+
+        controller.reset_strip()
+        controller.draw(route)
+
+        self.assertEqual(strip.getPixelColor(2), 0xFF0000)
+        self.assertEqual(strip.getPixelColor(8), 0xFF0000)
+
+    def test_closed_route_direction_includes_partial_trips_to_the_same_endpoint(self):
+        outbound = make_train("outbound", direction=1, cyclic=True)
+        inbound = make_train("inbound", direction=-1, cyclic=True)
+        outbound.trip.stops = outbound.trip.stops[:2]
+        inbound.trip.stops = inbound.trip.stops[1:]
+        outbound.position = 2
+        inbound.position = 3
+        route = make_route([outbound, inbound])
+        route.set_closed_section((1, 2))
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+        controller.select_direction(route.id, 2)
+
+        controller.reset_strip()
+        controller.draw(route)
+
+        self.assertEqual(strip.getPixelColor(2), 0xFF0000)
+        self.assertEqual(strip.getPixelColor(3), 0)
+        for position in (0, 5, 10):
+            self.assertEqual(strip.getPixelColor(position), 0xFFFFFF)
+        for position in range(6, 10):
+            self.assertEqual(strip.getPixelColor(position), 0xFF8000)
+
     def test_selected_train_is_the_only_train_rendered(self):
         selected = make_train("selected", cyclic=True)
         other = make_train("other", cyclic=True)

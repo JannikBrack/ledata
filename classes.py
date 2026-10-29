@@ -523,6 +523,19 @@ class Route():
         for train in self.trains:
             train.move(self)
 
+
+def train_direction_destination_id(route: Route, train: Train) -> int:
+    if not route.stations:
+        raise ValueError(f"Route {route.id} has no stations")
+    if route.closed_section is not None or train.trip.cyclic:
+        return (
+            route.stations[-1].id
+            if train.direction >= 0
+            else route.stations[0].id
+        )
+    return train.trip.stops[-1].station_id
+
+
 class Controller():
     routes: list[Route]
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
@@ -536,6 +549,7 @@ class Controller():
     strip: PixelStrip
     stopped: bool = True
     selected_train: tuple[int, str | int] | None = None
+    selected_direction: tuple[int, int] | None = None
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -544,12 +558,24 @@ class Controller():
         self._live_queue = queue.Queue()
         self._live_thread = None
         self.selected_train = None
+        self.selected_direction = None
 
     def select_train(self, route_id: int | None, train_id: str | int | None = None):
-        """Limit rendering to one train, or restore the complete LED display."""
+        """Limit rendering to one train; a missing selection clears that limit."""
         self.selected_train = (
             (route_id, train_id)
             if route_id is not None and train_id is not None
+            else None
+        )
+        if self.selected_train is not None:
+            self.selected_direction = None
+
+    def select_direction(self, route_id: int | None, destination_id: int | None):
+        """Limit rendering to trains heading toward one route endpoint."""
+        self.selected_train = None
+        self.selected_direction = (
+            (route_id, destination_id)
+            if route_id is not None and destination_id is not None
             else None
         )
 
@@ -577,6 +603,15 @@ class Controller():
                 active_trains = [
                     train for train in active_trains
                     if train.trip.id == selected_train_id
+                ]
+            else:
+                active_trains = []
+        elif self.selected_direction is not None:
+            selected_route_id, destination_id = self.selected_direction
+            if route.id == selected_route_id:
+                active_trains = [
+                    train for train in active_trains
+                    if train_direction_destination_id(route, train) == destination_id
                 ]
             else:
                 active_trains = []

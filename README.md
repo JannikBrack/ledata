@@ -11,6 +11,8 @@ Die Linienauswahl wird aus `meta.json` aufgebaut. Nach der Linienwahl zeigt die
 Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.
 Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
+Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
+etwaige Baustellenmarkierung bleiben sichtbar.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
