@@ -9,7 +9,8 @@ unter Raspberry Pi OS mit `sudo apt install python3-tk` installiert werden.
 
 Die Linienauswahl wird aus `meta.json` aufgebaut. Nach der Linienwahl zeigt die
 Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.
-Über den Richtungsfilter lässt sich nach der aktuellen Endhaltestelle filtern.
+Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
+die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Die Detailansicht ergänzt die aktuelle Position; während sie geöffnet ist,
 zeigt der LED-Streifen nur die ausgewählte Bahn. Zeiten werden in der lokalen
 Zeitzone des Raspberry Pi angezeigt.
