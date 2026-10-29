@@ -450,6 +450,14 @@ class FetchTests(unittest.TestCase):
             ],
             [("first-1", "next"), ("first-2", "later")],
         )
+        self.assertEqual(
+            [call.station_id for call in connections[0].first_calls],
+            [0, 10],
+        )
+        self.assertEqual(
+            [call.station_id for call in connections[0].second_calls],
+            [13, 21],
+        )
 
 
 class RequestTests(unittest.TestCase):

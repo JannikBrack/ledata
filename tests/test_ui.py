@@ -489,12 +489,46 @@ class TrainTableLayoutTests(unittest.TestCase):
             delay_seconds=0,
             first_journey_ref="first",
             second_journey_ref="second",
+            first_calls=(
+                LiveCall(0, START, START, START, START),
+                LiveCall(
+                    1,
+                    START + timedelta(minutes=5),
+                    START + timedelta(minutes=5),
+                    START + timedelta(minutes=5),
+                    START + timedelta(minutes=5),
+                ),
+            ),
+            second_calls=(
+                LiveCall(
+                    2,
+                    START + timedelta(minutes=10),
+                    START + timedelta(minutes=10),
+                    START + timedelta(minutes=10),
+                    START + timedelta(minutes=10),
+                ),
+                LiveCall(
+                    3,
+                    START + timedelta(minutes=15),
+                    START + timedelta(minutes=15),
+                    START + timedelta(minutes=15),
+                    START + timedelta(minutes=15),
+                ),
+            ),
         )
 
         connection = journeys_to_connections([source])[0]
 
         self.assertEqual(connection.first_trip_id, "first")
         self.assertEqual(connection.second_trip_id, "second")
+        self.assertEqual(
+            [stop.station_id for stop in connection.first_stops],
+            [0, 1],
+        )
+        self.assertEqual(
+            [stop.station_id for stop in connection.second_stops],
+            [2, 3],
+        )
 
     def test_connection_detail_summary_omits_transfer_departure(self):
         route = make_route()
@@ -579,7 +613,8 @@ class TrainTableLayoutTests(unittest.TestCase):
             ],
             cyclic=False,
         )
-        route.trips = [first_trip, second_trip]
+        # A connection can outlive the active-trips snapshot used by the route.
+        route.trips = []
         connection = RouteConnection(
             id="connection",
             origin_station_id=0,
@@ -593,6 +628,8 @@ class TrainTableLayoutTests(unittest.TestCase):
             delay_seconds=0,
             first_trip_id="first-leg",
             second_trip_id="second-leg",
+            first_stops=tuple(first_trip.stops),
+            second_stops=tuple(second_trip.stops),
         )
 
         timeline = connection_stop_timeline(
@@ -667,7 +704,7 @@ class TrainTableLayoutTests(unittest.TestCase):
             ],
             cyclic=False,
         )
-        route.trips = [first_trip, second_trip]
+        route.trips = []
         connection = RouteConnection(
             id="connection-reverse",
             origin_station_id=3,
@@ -681,6 +718,8 @@ class TrainTableLayoutTests(unittest.TestCase):
             delay_seconds=0,
             first_trip_id="first-leg",
             second_trip_id="second-leg",
+            first_stops=tuple(first_trip.stops),
+            second_stops=tuple(second_trip.stops),
         )
 
         timeline = connection_stop_timeline(
