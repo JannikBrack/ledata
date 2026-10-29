@@ -13,6 +13,9 @@ Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
 etwaige Baustellenmarkierung bleiben sichtbar.
+Konfiguriert sind die Linien 1, 2 und 3. Linie 3 folgt regulär der Strecke
+Gundelfinger Straße → Munzinger Straße; die Haltestellenfolge der Rückrichtung
+wird für Live-Fahrten ebenfalls berücksichtigt.
 Im Live-Modus werden in der Touchscreen-Oberfläche nur Daten der ausgewählten
 Linie abgefragt. Auf der Linienauswahlseite bleibt der LED-Streifen aus und es
 werden keine Live-Abfragen ausgeführt. In der Linienübersicht leuchten alle

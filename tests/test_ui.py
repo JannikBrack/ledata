@@ -89,6 +89,24 @@ class RouteSelectionUITests(unittest.TestCase):
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
         app.controller.select_route.assert_called_once_with(None)
 
+    def test_yellow_route_button_uses_black_text_for_contrast(self):
+        route = make_route()
+        route.color = (255, 255, 0)
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [route]
+        app.root = MagicMock()
+        app.root.winfo_children.return_value = []
+        app.tk = MagicMock()
+        app.closure_store = None
+        app._header = MagicMock()
+
+        app.show_routes()
+
+        button_options = app.tk.Button.call_args.kwargs
+        self.assertEqual(button_options["foreground"], "black")
+        self.assertEqual(button_options["activeforeground"], "black")
+
     def test_train_plan_header_shows_closure_next_to_route_name(self):
         route = make_route()
         route.closed_section = (1, 2)

@@ -403,6 +403,7 @@ class TramUI:
                 padx=6,
                 pady=6,
             )
+            text_color = "black" if route.color == (255, 255, 0) else "white"
             tk.Button(
                 card,
                 text=(
@@ -412,9 +413,9 @@ class TramUI:
                 ),
                 command=lambda route_id=route.id: self.show_trains(route_id),
                 background=self._color(route.color),
-                foreground="white",
+                foreground=text_color,
                 activebackground=self._color(route.color),
-                activeforeground="white",
+                activeforeground=text_color,
                 font=("TkDefaultFont", 20, "bold"),
                 padx=16,
                 pady=12,

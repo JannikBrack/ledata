@@ -371,6 +371,185 @@
           "de:08311:30400"
         ]
       }
+    },
+    {
+      "id": 2,
+      "name": "Linie 3",
+      "color": [
+        255,
+        255,
+        0
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        7,
+        9,
+        8,
+        5,
+        8,
+        10,
+        6,
+        14,
+        8,
+        8,
+        7,
+        7,
+        7,
+        9,
+        5,
+        9,
+        3,
+        3,
+        3,
+        2,
+        3,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Gundelfinger Straße",
+          "position": 0,
+          "trias_ref": "de:08311:750"
+        },
+        {
+          "id": 1,
+          "name": "Glottertalstraße",
+          "position": 7,
+          "trias_ref": "de:08311:30432"
+        },
+        {
+          "id": 2,
+          "name": "Berggasse",
+          "position": 16,
+          "trias_ref": "de:08311:30431"
+        },
+        {
+          "id": 3,
+          "name": "Reutebachgasse",
+          "position": 24,
+          "trias_ref": "de:08311:30202"
+        },
+        {
+          "id": 4,
+          "name": "Tullastraße",
+          "position": 29,
+          "trias_ref": "de:08311:30201"
+        },
+        {
+          "id": 5,
+          "name": "Hornusstraße",
+          "position": 37,
+          "trias_ref": "de:08311:30200"
+        },
+        {
+          "id": 6,
+          "name": "Okenstraße",
+          "position": 47,
+          "trias_ref": "de:08311:30203"
+        },
+        {
+          "id": 7,
+          "name": "Hauptstraße",
+          "position": 53,
+          "trias_ref": "de:08311:30204"
+        },
+        {
+          "id": 8,
+          "name": "Tennenbacher Straße",
+          "position": 67,
+          "trias_ref": "de:08311:30102"
+        },
+        {
+          "id": 9,
+          "name": "Europaplatz",
+          "position": 75,
+          "trias_ref": "de:08311:30101"
+        },
+        {
+          "id": 10,
+          "name": "Bertoldsbrunnen",
+          "position": 83,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 11,
+          "name": "Stadttheater",
+          "position": 90,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 12,
+          "name": "Hauptbahnhof",
+          "position": 97,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 13,
+          "name": "Eschholzstraße",
+          "position": 104,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 14,
+          "name": "Rathaus im Stühlinger",
+          "position": 113,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 15,
+          "name": "Runzmattenweg",
+          "position": 118,
+          "trias_ref": "de:08311:30501"
+        },
+        {
+          "id": 16,
+          "name": "Bissierstraße",
+          "position": 127,
+          "trias_ref": "de:08311:30505"
+        },
+        {
+          "id": 17,
+          "name": "Rohrgraben",
+          "position": 130,
+          "trias_ref": "de:08311:30607"
+        },
+        {
+          "id": 18,
+          "name": "Bugginger Straße",
+          "position": 133,
+          "trias_ref": "de:08311:30600"
+        },
+        {
+          "id": 19,
+          "name": "Am Lindenwäldle",
+          "position": 136,
+          "trias_ref": "de:08311:30601"
+        },
+        {
+          "id": 20,
+          "name": "VAG-Zentrum",
+          "position": 138,
+          "trias_ref": "de:08311:30715"
+        },
+        {
+          "id": 21,
+          "name": "Munzinger Straße",
+          "position": 141,
+          "trias_ref": "de:08311:30716"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11003:I:H",
+          "frb:11003:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:750",
+          "de:08311:30716"
+        ]
+      }
     }
   ],
   "trias": {

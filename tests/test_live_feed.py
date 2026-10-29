@@ -474,6 +474,99 @@ class FetchTests(unittest.TestCase):
 
 
 class RouteConfigTests(unittest.TestCase):
+    def test_line_three_has_ordered_live_stops_and_matching_led_positions(self):
+        meta = json.loads(
+            (Path(__file__).resolve().parents[1] / "meta.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        route = next(route for route in meta["routes"] if route["id"] == 2)
+
+        self.assertEqual(route["name"], "Linie 3")
+        self.assertEqual(
+            [station["name"] for station in route["stations"]],
+            [
+                "Gundelfinger Straße",
+                "Glottertalstraße",
+                "Berggasse",
+                "Reutebachgasse",
+                "Tullastraße",
+                "Hornusstraße",
+                "Okenstraße",
+                "Hauptstraße",
+                "Tennenbacher Straße",
+                "Europaplatz",
+                "Bertoldsbrunnen",
+                "Stadttheater",
+                "Hauptbahnhof",
+                "Eschholzstraße",
+                "Rathaus im Stühlinger",
+                "Runzmattenweg",
+                "Bissierstraße",
+                "Rohrgraben",
+                "Bugginger Straße",
+                "Am Lindenwäldle",
+                "VAG-Zentrum",
+                "Munzinger Straße",
+            ],
+        )
+        self.assertEqual(
+            route["led_layout"],
+            [
+                7, 9, 8, 5, 8, 10, 6, 14, 8, 8, 7,
+                7, 7, 9, 5, 9, 3, 3, 3, 2, 3, 1,
+            ],
+        )
+        self.assertEqual(len(route["stations"]), len(route["led_layout"]))
+        self.assertEqual(route["start_of_route"], 0)
+        positions = [station["position"] for station in route["stations"]]
+        self.assertEqual(
+            positions,
+            [
+                route["start_of_route"] + sum(route["led_layout"][:index])
+                for index in range(len(route["stations"]))
+            ],
+        )
+        self.assertTrue(
+            all(0 <= position < meta["led"]["count"] for position in positions)
+        )
+        self.assertEqual(route["color"], [255, 255, 0])
+        self.assertEqual(
+            [station["trias_ref"] for station in route["stations"]],
+            [
+                "de:08311:750",
+                "de:08311:30432",
+                "de:08311:30431",
+                "de:08311:30202",
+                "de:08311:30201",
+                "de:08311:30200",
+                "de:08311:30203",
+                "de:08311:30204",
+                "de:08311:30102",
+                "de:08311:30101",
+                "de:08311:30100",
+                "de:08311:30106",
+                "de:08311:6508",
+                "de:08311:30108",
+                "de:08311:30500",
+                "de:08311:30501",
+                "de:08311:30505",
+                "de:08311:30607",
+                "de:08311:30600",
+                "de:08311:30601",
+                "de:08311:30715",
+                "de:08311:30716",
+            ],
+        )
+        self.assertEqual(
+            route["trias"]["line_refs"],
+            ["frb:11003:I:H", "frb:11003:I:R"],
+        )
+        self.assertEqual(
+            route["trias"]["origin_refs"],
+            ["de:08311:750", "de:08311:30716"],
+        )
+
     def test_line_two_has_ordered_live_stops_and_matching_led_positions(self):
         meta = json.loads(
             (Path(__file__).resolve().parents[1] / "meta.json").read_text(
