@@ -244,11 +244,12 @@ class TramUI:
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
         self._tree.heading("action", text="")
-        self._tree.column("journey", width=194, anchor="w", stretch=False)
-        self._tree.column("delay", width=120, anchor="center", stretch=True)
-        self._tree.column("departure", width=120, anchor="center", stretch=True)
-        self._tree.column("arrival", width=120, anchor="center", stretch=True)
-        self._tree.column("action", width=200, anchor="center", stretch=True)
+        self._tree.column("journey", width=378, anchor="w", stretch=False)
+        self._tree.column("delay", width=81, anchor="center", stretch=False)
+        self._tree.column("departure", width=81, anchor="center", stretch=False)
+        self._tree.column("arrival", width=81, anchor="center", stretch=False)
+        self._tree.column("action", width=134, anchor="center", stretch=False)
+        self._tree.bind("<Configure>", self._resize_train_columns, add="+")
         style = ttk.Style()
         style.configure(
             "Touch.Treeview",
@@ -271,6 +272,27 @@ class TramUI:
         self._tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self._tree.bind("<<TreeviewSelect>>", self._train_selected)
+
+    def _resize_train_columns(self, event):
+        table_width = event.width
+        journey_width = table_width // 2
+        remaining_width = table_width - journey_width
+        other_columns = (
+            ("delay", 120),
+            ("departure", 120),
+            ("arrival", 120),
+            ("action", 200),
+        )
+        total_weight = sum(weight for _, weight in other_columns)
+        assigned_width = 0
+        for index, (column, weight) in enumerate(other_columns):
+            if index == len(other_columns) - 1:
+                width = remaining_width - assigned_width
+            else:
+                width = round(remaining_width * weight / total_weight)
+                assigned_width += width
+            self._tree.column(column, width=width)
+        self._tree.column("journey", width=journey_width)
 
     def _select_direction(self, direction_id: int | None):
         self.direction_id = direction_id

@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from classes import Controller, Route, Train, Trip, Stop
@@ -149,20 +150,32 @@ class TrainInfoTests(unittest.TestCase):
 
 
 class TrainTableLayoutTests(unittest.TestCase):
-    def test_journey_column_is_narrower_and_other_columns_expand(self):
+    def test_columns_keep_journey_at_half_of_available_table_width(self):
         app = TramUI.__new__(TramUI)
         ttk = MagicMock()
 
         app._build_train_table(MagicMock(), ttk)
-
         tree = ttk.Treeview.return_value
-        tree.column.assert_any_call("journey", width=194, anchor="w", stretch=False)
-        tree.column.assert_any_call("delay", width=120, anchor="center", stretch=True)
-        tree.column.assert_any_call(
-            "departure", width=120, anchor="center", stretch=True
-        )
-        tree.column.assert_any_call("arrival", width=120, anchor="center", stretch=True)
-        tree.column.assert_any_call("action", width=200, anchor="center", stretch=True)
+        for table_width, expected_other_widths in (
+            (800, [86, 86, 86, 142]),
+            (1200, [129, 129, 129, 213]),
+        ):
+            with self.subTest(table_width=table_width):
+                app._resize_train_columns(SimpleNamespace(width=table_width))
+                resized_columns = {
+                    call.args[0]: call.kwargs["width"]
+                    for call in tree.column.call_args_list[-5:]
+                }
+
+                self.assertEqual(resized_columns["journey"], table_width // 2)
+                self.assertEqual(
+                    [
+                        resized_columns[column]
+                        for column in ("delay", "departure", "arrival", "action")
+                    ],
+                    expected_other_widths,
+                )
+                self.assertEqual(sum(resized_columns.values()), table_width)
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
