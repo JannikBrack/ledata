@@ -244,11 +244,11 @@ class TramUI:
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
         self._tree.heading("action", text="")
-        self._tree.column("journey", width=310, anchor="w", stretch=True)
-        self._tree.column("delay", width=95, anchor="center", stretch=False)
-        self._tree.column("departure", width=95, anchor="center", stretch=False)
-        self._tree.column("arrival", width=95, anchor="center", stretch=False)
-        self._tree.column("action", width=160, anchor="center", stretch=False)
+        self._tree.column("journey", width=194, anchor="w", stretch=False)
+        self._tree.column("delay", width=120, anchor="center", stretch=True)
+        self._tree.column("departure", width=120, anchor="center", stretch=True)
+        self._tree.column("arrival", width=120, anchor="center", stretch=True)
+        self._tree.column("action", width=200, anchor="center", stretch=True)
         style = ttk.Style()
         style.configure(
             "Touch.Treeview",
