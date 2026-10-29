@@ -18,7 +18,9 @@ gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
 Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
 Die Linienauswahl markiert die betroffene Linie mit einem Warnsymbol. In der
-Fahrtübersicht bleiben die regulären Endstationen und Richtungsfilter erhalten.
+Fahrtübersicht markiert ein Warnsymbol in der Tabellenüberschrift die Baustelle
+einmalig; Fußwegtexte werden dort nicht angezeigt. Die regulären Endstationen
+und Richtungsfilter bleiben erhalten.
 Die beiden zugänglichen Teilfahrten werden zu einer Verbindung zwischen den
 regulären Endstationen zusammengeführt, wenn der Anschluss nach mindestens
 fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht
@@ -27,10 +29,11 @@ getrennt sichtbar. Der gesperrte Streckenabschnitt wird auf dem LED-Streifen
 orange markiert.
 
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
-nächsten Live-Start fragt die Anwendung, ob die gespeicherte Baustelle noch
-besteht. In der UI wird sie mit „Ja“ übernommen und mit „Nein“ entfernt;
-im Terminal wird entsprechend `j` oder `n` eingegeben. Die Datei enthält
-Laufzeitstatus und wird deshalb nicht von Git erfasst.
+nächsten Live-Start fragt die Anwendung im Terminal, ob die gespeicherte
+Baustelle noch besteht. Mit `j` wird sie übernommen, mit `n` entfernt. Danach
+startet die Touchscreen-UI im Vollbild; im `--terminal`-Betrieb bleibt die
+textbasierte Steuerung aktiv. Die Datei enthält Laufzeitstatus und wird deshalb
+nicht von Git erfasst.
 Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
 bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
 pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge

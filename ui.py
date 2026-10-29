@@ -80,23 +80,6 @@ def filter_trains(
     ]
 
 
-def walking_instruction(
-    route: Route,
-    train: Train,
-    closure: tuple[int, int] | None,
-) -> str:
-    if closure is None:
-        return ""
-    destination_id = train.trip.stops[-1].station_id
-    other_terminal = next(
-        (station_id for station_id in closure if station_id != destination_id),
-        None,
-    )
-    if other_terminal is None:
-        return ""
-    return f"Zu Fuß bis {_station_name(route, other_terminal)}"
-
-
 def walking_connection_instruction(
     route: Route,
     connection: RouteConnection,
@@ -158,7 +141,6 @@ class TramUI:
         self.root.configure(background="#f3f5f7")
         self.root.bind("<Escape>", lambda _event: self.go_back())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
-        self._confirm_saved_closures()
         self.show_routes()
         self.root.after(1000, self.refresh)
 
@@ -254,35 +236,6 @@ class TramUI:
             body.grid_columnconfigure(column, weight=1)
         for row in range((len(self.routes) + 1) // 2):
             body.grid_rowconfigure(row, weight=1)
-
-    def _confirm_saved_closures(self):
-        if self.closure_store is None:
-            return
-        for route in self.routes:
-            closure = self.closure_store.get(route.id)
-            if closure is None:
-                continue
-            start_name = _station_name(route, closure[0])
-            end_name = _station_name(route, closure[1])
-            keep = self.messagebox.askyesnocancel(
-                "Baustelle bestätigen",
-                (
-                    f"Gibt es die Baustelle zwischen {start_name} und "
-                    f"{end_name} auf {route.name} noch?"
-                ),
-                parent=self.root,
-            )
-            if keep is False:
-                try:
-                    self.closure_store.set(route.id, None)
-                except OSError as exc:
-                    self.messagebox.showerror(
-                        "Baustelle nicht entfernt",
-                        str(exc),
-                        parent=self.root,
-                    )
-                    continue
-                route.set_closed_section(None)
 
     def show_closure_editor(self, route_id: int):
         route = next(route for route in self.routes if route.id == route_id)
@@ -475,7 +428,7 @@ class TramUI:
         self._refresh_train_rows()
 
     def _build_train_table(self, parent, ttk):
-        columns = ("journey", "walk", "delay", "departure", "arrival", "action")
+        columns = ("journey", "closure", "delay", "departure", "arrival", "action")
         self._tree = ttk.Treeview(
             parent,
             columns=columns,
@@ -485,13 +438,17 @@ class TramUI:
             cursor="hand2",
         )
         self._tree.heading("journey", text="Herkunft → Ziel")
-        self._tree.heading("walk", text="Fußweg bei Baustelle")
+        self._tree.heading(
+            "closure",
+            text="⚠" if self.route.closed_section is not None else "",
+            anchor="center",
+        )
         self._tree.heading("delay", text="Verspätung")
         self._tree.heading("departure", text="Abfahrt")
         self._tree.heading("arrival", text="Ankunft")
         self._tree.heading("action", text="")
         self._tree.column("journey", width=270, anchor="w", stretch=False)
-        self._tree.column("walk", width=220, anchor="w", stretch=False)
+        self._tree.column("closure", width=48, anchor="center", stretch=False)
         self._tree.column("delay", width=81, anchor="center", stretch=False)
         self._tree.column("departure", width=81, anchor="center", stretch=False)
         self._tree.column("arrival", width=81, anchor="center", stretch=False)
@@ -523,8 +480,8 @@ class TramUI:
     def _resize_train_columns(self, event):
         table_width = event.width
         journey_width = round(table_width * 0.35)
-        walk_width = round(table_width * 0.28)
-        remaining_width = table_width - journey_width - walk_width
+        closure_width = 48
+        remaining_width = table_width - journey_width - closure_width
         other_columns = (
             ("delay", 120),
             ("departure", 120),
@@ -540,7 +497,7 @@ class TramUI:
                 width = round(remaining_width * weight / total_weight)
                 assigned_width += width
             self._tree.column(column, width=width)
-        self._tree.column("walk", width=walk_width)
+        self._tree.column("closure", width=closure_width)
         self._tree.column("journey", width=journey_width)
 
     def _select_direction(self, direction_id: int | None):
@@ -607,11 +564,7 @@ class TramUI:
             info = train_info(self.route, train)
             values = (
                 f"{info.origin} → {info.destination}",
-                walking_instruction(
-                    self.route,
-                    train,
-                    self.route.closed_section,
-                ),
+                "",
                 self._format_delay(info.current_delay),
                 self._format_time(info.departure),
                 self._format_time(info.arrival),
@@ -640,7 +593,7 @@ class TramUI:
                     f"{_station_name(self.route, connection.origin_station_id)}"
                     f" → {_station_name(self.route, connection.destination_station_id)}"
                 ),
-                walking_connection_instruction(self.route, connection),
+                "",
                 self._format_delay(timedelta(seconds=connection.delay_seconds)),
                 self._format_time(connection.departure),
                 self._format_time(connection.arrival),

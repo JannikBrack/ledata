@@ -152,6 +152,14 @@ def confirm_saved_closures_in_terminal(routes, closure_store):
             print("Bitte mit j oder n antworten.")
 
 
+def start_application(routes, controller, closure_store, use_ui):
+    confirm_saved_closures_in_terminal(routes, closure_store)
+    if use_ui:
+        run_ui(routes, controller, closure_store)
+    else:
+        controller.start()
+
+
 def _log_live_snapshot(route_config, journeys):
     station_names = {
         station["id"]: station.get("name", str(station["id"]))
@@ -302,12 +310,7 @@ if __name__ == "__main__":
         controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
     use_ui = args.ui if args.ui is not None else HAVE_RPI and not args.dry_run
     try:
-        if not use_ui:
-            confirm_saved_closures_in_terminal(routes, closure_store)
-        if use_ui:
-            run_ui(routes, controller, closure_store)
-        else:
-            controller.start()
+        start_application(routes, controller, closure_store, use_ui)
     except KeyboardInterrupt:
         pass
     finally:

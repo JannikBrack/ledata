@@ -2,13 +2,10 @@
 
 import unittest
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from classes import Controller, Route, RouteConnection, Train, Trip, Stop
-from closures import ClosureStore
 from led_backend import FakeStrip
 from live_feed import LiveCall, LiveJourney
 from main import journeys_to_trips
@@ -201,15 +198,18 @@ class TrainInfoTests(unittest.TestCase):
 
 
 class TrainTableLayoutTests(unittest.TestCase):
-    def test_columns_keep_journey_at_half_of_available_table_width(self):
+    def test_columns_show_one_closure_warning_and_fill_table_width(self):
         app = TramUI.__new__(TramUI)
+        app.route = make_route()
+        app.route.closed_section = (1, 2)
         ttk = MagicMock()
 
         app._build_train_table(MagicMock(), ttk)
         tree = ttk.Treeview.return_value
+        tree.heading.assert_any_call("closure", text="⚠", anchor="center")
         for table_width, expected_other_widths in (
-            (800, [63, 63, 63, 107]),
-            (1200, [95, 95, 95, 159]),
+            (800, [101, 101, 101, 169]),
+            (1200, [157, 157, 157, 261]),
         ):
             with self.subTest(table_width=table_width):
                 app._resize_train_columns(SimpleNamespace(width=table_width))
@@ -219,7 +219,7 @@ class TrainTableLayoutTests(unittest.TestCase):
                 }
 
                 self.assertEqual(resized_columns["journey"], round(table_width * 0.35))
-                self.assertEqual(resized_columns["walk"], round(table_width * 0.28))
+                self.assertEqual(resized_columns["closure"], 48)
                 self.assertEqual(
                     [
                         resized_columns[column]
@@ -228,6 +228,19 @@ class TrainTableLayoutTests(unittest.TestCase):
                     expected_other_widths,
                 )
                 self.assertEqual(sum(resized_columns.values()), table_width)
+
+    def test_no_closure_has_no_warning_in_table_heading(self):
+        app = TramUI.__new__(TramUI)
+        app.route = make_route()
+        ttk = MagicMock()
+
+        app._build_train_table(MagicMock(), ttk)
+
+        ttk.Treeview.return_value.heading.assert_any_call(
+            "closure",
+            text="",
+            anchor="center",
+        )
 
 
 class DirectionFilterUITests(unittest.TestCase):
@@ -249,49 +262,6 @@ class DirectionFilterUITests(unittest.TestCase):
             ],
             [(app.route.id, 2), (app.route.id, None)],
         )
-
-
-class ClosureConfirmationTests(unittest.TestCase):
-    def setUp(self):
-        self.temporary_directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temporary_directory.cleanup)
-        route = make_route()
-        self.route = route
-        self.store = ClosureStore(
-            Path(self.temporary_directory.name) / "baustellen.json",
-            {route.id: [station.id for station in route.stations]},
-        )
-        self.store.set(route.id, (1, 2))
-        route.set_closed_section((1, 2))
-        self.app = TramUI.__new__(TramUI)
-        self.app.routes = [route]
-        self.app.closure_store = self.store
-        self.app.messagebox = MagicMock()
-        self.app.root = MagicMock()
-
-    def test_confirming_keeps_saved_closure(self):
-        self.app.messagebox.askyesnocancel.return_value = True
-
-        self.app._confirm_saved_closures()
-
-        self.assertEqual(self.store.get(self.route.id), (1, 2))
-        self.assertEqual(self.route.closed_section, (1, 2))
-
-    def test_declining_removes_saved_closure(self):
-        self.app.messagebox.askyesnocancel.return_value = False
-
-        self.app._confirm_saved_closures()
-
-        self.assertIsNone(self.store.get(self.route.id))
-        self.assertIsNone(self.route.closed_section)
-
-    def test_dismissing_confirmation_keeps_saved_closure(self):
-        self.app.messagebox.askyesnocancel.return_value = None
-
-        self.app._confirm_saved_closures()
-
-        self.assertEqual(self.store.get(self.route.id), (1, 2))
-        self.assertEqual(self.route.closed_section, (1, 2))
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):

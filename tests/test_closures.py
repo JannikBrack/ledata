@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from closures import ClosureStore
-from main import confirm_saved_closures_in_terminal
+from main import confirm_saved_closures_in_terminal, start_application
 
 
 class ClosureStoreTests(unittest.TestCase):
@@ -74,6 +74,35 @@ class ClosureStoreTests(unittest.TestCase):
             confirm_saved_closures_in_terminal([route], self.store)
 
         self.assertIsNone(self.store.get(1))
+        route.set_closed_section.assert_called_once_with(None)
+
+    def test_ui_starts_after_terminal_closure_confirmation(self):
+        self.store.set(1, (1, 2))
+        route = SimpleNamespace(
+            id=1,
+            name="Linie 1",
+            station_names={1: "Stadttheater", 2: "Bertoldsbrunnen"},
+            set_closed_section=MagicMock(),
+        )
+        controller = MagicMock()
+        events = []
+
+        def answer_prompt(_prompt):
+            events.append("prompt")
+            return "n"
+
+        def start_ui(routes, controller, closure_store):
+            events.append("ui")
+            self.assertIsNone(closure_store.get(1))
+
+        with (
+            patch("builtins.input", side_effect=answer_prompt),
+            patch("main.run_ui", side_effect=start_ui) as run_ui,
+        ):
+            start_application([route], controller, self.store, use_ui=True)
+
+        self.assertEqual(events, ["prompt", "ui"])
+        run_ui.assert_called_once_with([route], controller, self.store)
         route.set_closed_section.assert_called_once_with(None)
 
 
