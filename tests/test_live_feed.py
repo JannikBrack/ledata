@@ -198,7 +198,7 @@ class FetchTests(unittest.TestCase):
         feed = LiveFeed(
             client,
             [self.route],
-            closure_provider=lambda: {7: (10, 11)},
+            closure_provider=lambda: {7: (10, 13)},
         )
 
         result = feed.fetch(now)
@@ -229,15 +229,15 @@ class FetchTests(unittest.TestCase):
                 datetime(2026, 10, 27, 9, 30, tzinfo=timezone.utc)
             )
 
-    def test_closure_truncates_journeys_at_each_directional_terminal(self):
+    def test_multi_station_closure_truncates_at_each_directional_terminal(self):
         outbound = parse_stop_events(MOOS, STATION_REFS)[0]
         inbound = parse_stop_events(LASS, STATION_REFS)[0]
 
         outbound_part = LiveFeed._truncate_at_closure(
-            self.route, outbound, (10, 11)
+            self.route, outbound, (10, 13)
         )
         inbound_part = LiveFeed._truncate_at_closure(
-            self.route, inbound, (10, 11)
+            self.route, inbound, (10, 13)
         )
 
         self.assertEqual(
@@ -246,10 +246,10 @@ class FetchTests(unittest.TestCase):
         )
         self.assertEqual(
             [call.station_id for call in inbound_part.calls],
-            list(range(21, 10, -1)),
+            list(range(21, 12, -1)),
         )
         self.assertEqual(outbound_part.destination, self.route["stations"][10]["name"])
-        self.assertEqual(inbound_part.destination, self.route["stations"][11]["name"])
+        self.assertEqual(inbound_part.destination, self.route["stations"][13]["name"])
 
     def test_closure_drops_journey_starting_at_boundary_into_closed_track(self):
         journey = parse_stop_events(MOOS, STATION_REFS)[0]

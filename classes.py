@@ -455,8 +455,8 @@ class Route():
             second_index = station_positions[station_ids[1]]
         except KeyError as exc:
             raise ValueError(f"Unknown station in closed section: {exc.args[0]}") from exc
-        if abs(first_index - second_index) != 1:
-            raise ValueError("A closed section must connect adjacent stations")
+        if first_index == second_index:
+            raise ValueError("A closed section must have different endpoint stations")
         self.closed_section = station_ids
 
     def trip_for_train(self, train_id):

@@ -108,8 +108,8 @@ class ClosureStore:
             raise ValueError(
                 f"Baustellen-Haltestelle gehört nicht zu Linie {route_id}."
             ) from exc
-        if abs(first_index - second_index) != 1:
+        if first_index == second_index:
             raise ValueError(
-                f"Die Baustellen-Haltestellen auf Linie {route_id} "
-                "müssen direkt aufeinanderfolgen."
+                f"Die Von- und Bis-Haltestelle auf Linie {route_id} "
+                "müssen verschieden sein."
             )

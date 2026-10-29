@@ -35,17 +35,30 @@ class ClosureStoreTests(unittest.TestCase):
         self.assertEqual(self.store.load(), {})
         self.assertEqual(json.loads(self.path.read_text(encoding="utf-8")), {"closures": {}})
 
-    def test_rejects_non_adjacent_stations(self):
-        with self.assertRaisesRegex(ValueError, "direkt aufeinanderfolgen"):
-            self.store.set(1, (0, 2))
+    def test_accepts_closure_spanning_multiple_station_segments(self):
+        self.store.set(1, (0, 3))
 
-    def test_load_rejects_non_adjacent_stations(self):
+        self.assertEqual(self.store.get(1), (0, 3))
+
+    def test_rejects_same_station_as_both_endpoints(self):
+        with self.assertRaisesRegex(ValueError, "müssen verschieden sein"):
+            self.store.set(1, (1, 1))
+
+    def test_load_accepts_closure_spanning_multiple_station_segments(self):
         self.path.write_text(
-            json.dumps({"closures": {"1": [0, 2]}}),
+            json.dumps({"closures": {"1": [0, 3]}}),
             encoding="utf-8",
         )
 
-        with self.assertRaisesRegex(ValueError, "direkt aufeinanderfolgen"):
+        self.assertEqual(self.store.load(), {1: (0, 3)})
+
+    def test_load_rejects_same_station_as_both_endpoints(self):
+        self.path.write_text(
+            json.dumps({"closures": {"1": [1, 1]}}),
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "müssen verschieden sein"):
             self.store.load()
 
     def test_terminal_confirmation_can_remove_saved_closure(self):

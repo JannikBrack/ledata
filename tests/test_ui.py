@@ -280,15 +280,15 @@ class ControllerTrainSelectionTests(unittest.TestCase):
 
     def test_closed_section_is_orange_between_station_pixels(self):
         route = make_route()
-        route.set_closed_section((0, 1))
+        route.set_closed_section((0, 2))
         strip = FakeStrip(15)
         controller = Controller([route], strip)
 
         controller.draw(route)
 
         self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
-        self.assertEqual(strip.getPixelColor(5), 0xFFFFFF)
-        for position in range(1, 5):
+        self.assertEqual(strip.getPixelColor(10), 0xFFFFFF)
+        for position in range(1, 10):
             self.assertEqual(strip.getPixelColor(position), 0xFF8000)
 
 

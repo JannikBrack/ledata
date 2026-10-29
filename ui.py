@@ -272,36 +272,61 @@ class TramUI:
         body.pack(fill="both", expand=True)
         tk.Label(
             body,
-            text="Gesperrten Abschnitt auswählen:",
+            text="Baustelle von/bis festlegen:",
             background="#f3f5f7",
             font=("TkDefaultFont", 18, "bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        stations = route.stations
-        self._closure_choices = {}
-        for first, second in zip(stations, stations[1:]):
-            first_name = _station_name(route, first.id)
-            second_name = _station_name(route, second.id)
-            label = f"{first_name} ↔ {second_name}"
-            self._closure_choices[label] = (first.id, second.id)
+        self._closure_station_choices = {
+            _station_name(route, station.id): station.id
+            for station in route.stations
+        }
         current = route.closed_section
-        selected_label = next(
+        selected_from = next(
             (
                 label
-                for label, station_ids in self._closure_choices.items()
-                if station_ids == current or station_ids[::-1] == current
+                for label, station_id in self._closure_station_choices.items()
+                if current is not None and station_id == current[0]
             ),
             "",
         )
-        self._closure_choice = tk.StringVar(value=selected_label)
-        selector = ttk.Combobox(
+        selected_to = next(
+            (
+                label
+                for label, station_id in self._closure_station_choices.items()
+                if current is not None and station_id == current[1]
+            ),
+            "",
+        )
+        labels = list(self._closure_station_choices)
+        self._closure_from_choice = tk.StringVar(value=selected_from)
+        self._closure_to_choice = tk.StringVar(value=selected_to)
+        tk.Label(
             body,
-            textvariable=self._closure_choice,
-            values=list(self._closure_choices),
+            text="Von",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 15, "bold"),
+        ).pack(anchor="w")
+        ttk.Combobox(
+            body,
+            textvariable=self._closure_from_choice,
+            values=labels,
             state="readonly",
             font=("TkDefaultFont", 16),
-        )
-        selector.pack(fill="x", pady=(0, 16))
+        ).pack(fill="x", pady=(0, 10))
+        tk.Label(
+            body,
+            text="Bis",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 15, "bold"),
+        ).pack(anchor="w")
+        ttk.Combobox(
+            body,
+            textvariable=self._closure_to_choice,
+            values=labels,
+            state="readonly",
+            font=("TkDefaultFont", 16),
+        ).pack(fill="x", pady=(0, 16))
 
         tk.Button(
             body,
@@ -322,15 +347,27 @@ class TramUI:
             ).pack(anchor="w", pady=5)
 
     def _save_closure(self, route: Route):
-        label = self._closure_choice.get()
-        station_ids = self._closure_choices.get(label)
-        if station_ids is None:
+        first_id = self._closure_station_choices.get(
+            self._closure_from_choice.get()
+        )
+        second_id = self._closure_station_choices.get(
+            self._closure_to_choice.get()
+        )
+        if first_id is None or second_id is None:
             self.messagebox.showerror(
                 "Baustelle nicht gespeichert",
-                "Bitte einen Streckenabschnitt auswählen.",
+                "Bitte Von- und Bis-Haltestelle auswählen.",
                 parent=self.root,
             )
             return
+        if first_id == second_id:
+            self.messagebox.showerror(
+                "Baustelle nicht gespeichert",
+                "Von- und Bis-Haltestelle müssen verschieden sein.",
+                parent=self.root,
+            )
+            return
+        station_ids = (first_id, second_id)
         try:
             if self.closure_store is not None:
                 self.closure_store.set(route.id, station_ids)

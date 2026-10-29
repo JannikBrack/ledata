@@ -12,7 +12,8 @@ Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.
 Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
-gesperrter Abschnitt zwischen zwei benachbarten Haltestellen festgelegt werden.
+gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
+Streckenabschnitte dazwischen gelten als gesperrt.
 Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
 Die Linienauswahl markiert die betroffene Linie mit einem Warnsymbol. In der
 Fahrtübersicht enden die Live-Fahrten an den beiden Sperrhaltestellen; die
