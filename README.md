@@ -6,9 +6,6 @@ Auf einem Raspberry Pi, auf dem `rpi_ws281x` verfügbar ist, startet `main.py`
 standardmäßig eine native Touchscreen-Oberfläche im Vollbild. Dafür muss eine
 grafische Desktop-Sitzung laufen. Falls Tkinter auf dem System fehlt, kann es
 unter Raspberry Pi OS mit `sudo apt install python3-tk` installiert werden.
-Die Oberfläche erkennt Hoch- und Querformat automatisch. Die Display-Rotation
-selbst wird in Raspberry Pi OS beziehungsweise in der Display-Konfiguration
-eingestellt.
 
 Die Linienauswahl wird aus `meta.json` aufgebaut. Nach der Linienwahl zeigt die
 Bahnauswahl die Fahrten mit Herkunft, Ziel sowie Abfahrts- und Ankunftszeit.

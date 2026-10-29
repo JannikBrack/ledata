@@ -89,15 +89,11 @@ class TramUI:
         self.root = root
         self.routes = routes
         self.controller = controller
-        self.is_portrait = root.winfo_screenheight() > root.winfo_screenwidth()
         self.route: Route | None = None
         self.screen = "routes"
         self.direction_id: int | None = None
         self._row_trains: dict[str, Train] = {}
         self._filter_buttons = {}
-        self._train_cards = {}
-        self._train_card_order: list[str] = []
-        self._train_cards_frame = None
         self._detail_train_id: str | int | None = None
         self._detail_labels = {}
 
@@ -115,36 +111,31 @@ class TramUI:
 
     def _header(self, title: str, back_label: str | None = None):
         tk = self.tk
-        header = tk.Frame(
-            self.root,
-            background="#f3f5f7",
-            padx=8 if self.is_portrait else 12,
-            pady=6 if self.is_portrait else 8,
-        )
+        header = tk.Frame(self.root, background="#f3f5f7", padx=12, pady=8)
         header.pack(fill="x")
         if back_label:
             tk.Button(
                 header,
                 text=back_label,
                 command=self.go_back,
-                font=("TkDefaultFont", 13 if self.is_portrait else 15, "bold"),
-                padx=10 if self.is_portrait else 14,
-                pady=9 if self.is_portrait else 11,
-            ).pack(side="left", padx=(0, 8 if self.is_portrait else 12))
+                font=("TkDefaultFont", 15, "bold"),
+                padx=14,
+                pady=11,
+            ).pack(side="left", padx=(0, 12))
         tk.Label(
             header,
             text=title,
             background="#f3f5f7",
-            font=("TkDefaultFont", 17 if self.is_portrait else 20, "bold"),
+            font=("TkDefaultFont", 20, "bold"),
             anchor="w",
         ).pack(side="left", fill="x", expand=True)
         tk.Button(
             header,
             text="Beenden",
             command=self.close,
-            font=("TkDefaultFont", 12 if self.is_portrait else 14, "bold"),
-            padx=9 if self.is_portrait else 12,
-            pady=9 if self.is_portrait else 11,
+            font=("TkDefaultFont", 14, "bold"),
+            padx=12,
+            pady=11,
         ).pack(side="right")
 
     def show_routes(self):
@@ -155,12 +146,7 @@ class TramUI:
         self._header("Linie auswählen")
 
         tk = self.tk
-        body = tk.Frame(
-            self.root,
-            background="#f3f5f7",
-            padx=8 if self.is_portrait else 12,
-            pady=6,
-        )
+        body = tk.Frame(self.root, background="#f3f5f7", padx=12, pady=6)
         body.pack(fill="both", expand=True)
         if not self.routes:
             tk.Label(
@@ -171,7 +157,6 @@ class TramUI:
             ).pack(anchor="w", pady=12)
             return
 
-        column_count = 1 if self.is_portrait else 2
         for index, route in enumerate(self.routes):
             tk.Button(
                 body,
@@ -181,20 +166,14 @@ class TramUI:
                 foreground="white",
                 activebackground=self._color(route.color),
                 activeforeground="white",
-                font=("TkDefaultFont", 18 if self.is_portrait else 20, "bold"),
+                font=("TkDefaultFont", 20, "bold"),
                 padx=16,
-                pady=14 if self.is_portrait else 16,
-                wraplength=390 if self.is_portrait else 320,
-            ).grid(
-                row=index // column_count,
-                column=index % column_count,
-                sticky="nsew",
-                padx=6,
-                pady=6,
-            )
-        for column in range(column_count):
+                pady=16,
+                wraplength=320,
+            ).grid(row=index // 2, column=index % 2, sticky="nsew", padx=6, pady=6)
+        for column in range(2):
             body.grid_columnconfigure(column, weight=1)
-        for row in range((len(self.routes) + column_count - 1) // column_count):
+        for row in range((len(self.routes) + 1) // 2):
             body.grid_rowconfigure(row, weight=1)
 
     @staticmethod
@@ -211,12 +190,7 @@ class TramUI:
 
         tk = self.tk
         ttk = self.ttk
-        controls = tk.Frame(
-            self.root,
-            background="#f3f5f7",
-            padx=6 if self.is_portrait else 10,
-            pady=2,
-        )
+        controls = tk.Frame(self.root, background="#f3f5f7", padx=10, pady=2)
         controls.pack(fill="x")
 
         endpoints = self.route.stations
@@ -230,10 +204,10 @@ class TramUI:
                 controls,
                 text=label,
                 command=lambda selected_id=direction_id: self._select_direction(selected_id),
-                font=("TkDefaultFont", 11 if self.is_portrait else 13, "bold"),
+                font=("TkDefaultFont", 13, "bold"),
                 padx=6,
-                pady=8 if self.is_portrait else 9,
-                wraplength=130 if self.is_portrait else 230,
+                pady=9,
+                wraplength=230,
                 relief="raised",
                 bd=2,
             )
@@ -241,33 +215,17 @@ class TramUI:
             self._filter_buttons[direction_id] = button
         self._update_filter_buttons()
 
-        table_frame = tk.Frame(
-            self.root,
-            padx=6 if self.is_portrait else 10,
-            pady=6,
-        )
+        table_frame = tk.Frame(self.root, padx=10, pady=6)
         table_frame.pack(fill="both", expand=True)
-        self._tree = None
-        self._train_canvas = None
-        self._train_cards_frame = None
-        self._train_cards = {}
-        self._train_card_order = []
-        if self.is_portrait:
-            self._build_train_cards(table_frame)
-        else:
-            self._build_train_table(table_frame, ttk)
+        self._build_train_table(table_frame, ttk)
 
         self._empty_label = tk.Label(
             self.root,
             text="Es sind aktuell keine Bahnen verfügbar.",
             background="#f3f5f7",
-            font=("TkDefaultFont", 12 if self.is_portrait else 14),
+            font=("TkDefaultFont", 14),
         )
-        self._empty_label.pack(
-            anchor="w",
-            padx=8 if self.is_portrait else 12,
-            pady=(0, 8),
-        )
+        self._empty_label.pack(anchor="w", padx=12, pady=(0, 8))
         self._row_trains = {}
         self._refresh_train_rows()
 
@@ -314,30 +272,6 @@ class TramUI:
         scrollbar.pack(side="right", fill="y")
         self._tree.bind("<<TreeviewSelect>>", self._train_selected)
 
-    def _build_train_cards(self, parent):
-        canvas = self.tk.Canvas(parent, background="#f3f5f7", highlightthickness=0)
-        scrollbar = self.tk.Scrollbar(
-            parent,
-            orient="vertical",
-            command=canvas.yview,
-            width=24,
-        )
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        cards = self.tk.Frame(canvas, background="#f3f5f7")
-        window_id = canvas.create_window((0, 0), window=cards, anchor="nw")
-        cards.bind(
-            "<Configure>",
-            lambda _event: canvas.configure(scrollregion=canvas.bbox("all")),
-        )
-        canvas.bind(
-            "<Configure>",
-            lambda event: canvas.itemconfigure(window_id, width=event.width),
-        )
-        self._train_canvas = canvas
-        self._train_cards_frame = cards
-
     def _select_direction(self, direction_id: int | None):
         self.direction_id = direction_id
         self._update_filter_buttons()
@@ -365,10 +299,7 @@ class TramUI:
             self.route.trains,
             self.direction_id,
         )
-        if self.is_portrait:
-            self._refresh_train_cards(trains)
-        else:
-            self._refresh_train_table(trains)
+        self._refresh_train_table(trains)
 
         self._empty_label.configure(
             text="Es sind aktuell keine Bahnen in dieser Richtung verfügbar."
@@ -378,11 +309,7 @@ class TramUI:
         if trains:
             self._empty_label.pack_forget()
         else:
-            self._empty_label.pack(
-                anchor="w",
-                padx=8 if self.is_portrait else 12,
-                pady=(0, 8),
-            )
+            self._empty_label.pack(anchor="w", padx=12, pady=(0, 8))
 
     def _refresh_train_table(self, trains: list[Train]):
         visible_ids = set()
@@ -409,56 +336,6 @@ class TramUI:
                 self._tree.delete(row_id)
         self._row_trains = row_trains
 
-    def _refresh_train_cards(self, trains: list[Train]):
-        if self._train_cards_frame is None:
-            return
-        order = []
-        for index, train in enumerate(trains):
-            row_id = str(train.trip.id)
-            info = train_info(self.route, train)
-            text = (
-                f"{info.origin} → {info.destination}\n"
-                f"Verspätung: {self._format_delay(info.current_delay)}\n"
-                f"Abfahrt {self._format_time(info.departure)}"
-                f" · Ankunft {self._format_time(info.arrival)}\n"
-                "Tippen für Details →"
-            )
-            card = self._train_cards.get(row_id)
-            if card is None:
-                card = self.tk.Button(
-                    self._train_cards_frame,
-                    command=lambda train_id=train.trip.id: self.show_train_detail(train_id),
-                    anchor="w",
-                    justify="left",
-                    font=("TkDefaultFont", 13, "bold"),
-                    padx=12,
-                    pady=8,
-                    wraplength=410,
-                    height=4,
-                    relief="raised",
-                    bd=2,
-                    cursor="hand2",
-                )
-                self._train_cards[row_id] = card
-            card.configure(
-                text=text,
-                background="#ffffff" if index % 2 == 0 else "#eaf1f6",
-                foreground="#263238",
-                activebackground="#dceaf2",
-                activeforeground="#17212b",
-            )
-            order.append(row_id)
-
-        for row_id in tuple(self._train_cards):
-            if row_id not in order:
-                self._train_cards.pop(row_id).destroy()
-        if order != self._train_card_order:
-            for card in self._train_cards.values():
-                card.pack_forget()
-            for row_id in order:
-                self._train_cards[row_id].pack(fill="x", padx=4, pady=4)
-            self._train_card_order = order
-
     def _train_selected(self, _event=None):
         selection = self._tree.selection()
         if selection and selection[0] in self._row_trains:
@@ -472,29 +349,19 @@ class TramUI:
         self.screen = "detail"
         self._clear()
         self._header(f"{self.route.name} · Bahn {train_id}", "Bahnauswahl")
-        content = self.tk.Frame(
-            self.root,
-            background="#f3f5f7",
-            padx=12 if self.is_portrait else 18,
-            pady=8 if self.is_portrait else 12,
-        )
+        content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
         content.pack(fill="both", expand=True)
         self._detail_labels = {}
         for key in ("journey", "times", "delay", "position", "direction"):
             label = self.tk.Label(
                 content,
                 background="#f3f5f7",
-                font=(
-                    "TkDefaultFont",
-                    (18 if key in ("delay", "position") else 15)
-                    if self.is_portrait
-                    else (20 if key in ("delay", "position") else 17),
-                ),
+                font=("TkDefaultFont", 20 if key in ("delay", "position") else 17),
                 anchor="w",
                 justify="left",
-                wraplength=440 if self.is_portrait else 740,
+                wraplength=740,
             )
-            label.pack(fill="x", pady=6 if self.is_portrait else 8)
+            label.pack(fill="x", pady=8)
             self._detail_labels[key] = label
         self._refresh_detail()
 
