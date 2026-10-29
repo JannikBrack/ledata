@@ -13,7 +13,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from classes import Controller, Route, Stop, Train, Trip
+from classes import (
+    Controller,
+    Route,
+    RouteConnection,
+    RouteLiveData,
+    Stop,
+    Train,
+    Trip,
+)
 from led_backend import FakeStrip
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -320,6 +328,33 @@ class ControllerLiveTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual([train.id for train in route.trains], ["live-0"])
         self.assertIs(route.trains[0].trip, trips[0])
+
+    def test_controller_keeps_physical_trips_separate_from_connections(self):
+        route = make_route()
+        route.set_closed_section((1, 2))
+        controller = Controller([route], FakeStrip(15))
+        now = datetime.now(timezone.utc)
+        trip = make_trip("left-half", base=now - timedelta(seconds=90))
+        connection = RouteConnection(
+            id="left-half|right-half",
+            origin_station_id=0,
+            destination_station_id=2,
+            first_boundary_station_id=1,
+            second_boundary_station_id=2,
+            departure=now - timedelta(minutes=1),
+            arrival=now + timedelta(minutes=10),
+            transfer_arrival=now + timedelta(minutes=2),
+            transfer_departure=now + timedelta(minutes=7),
+            delay_seconds=0,
+        )
+        controller._live_queue.put(
+            {0: RouteLiveData(trips=[trip], connections=[connection])}
+        )
+
+        controller._drain_live_queue(600)
+
+        self.assertEqual([train.trip.id for train in route.trains], ["left-half"])
+        self.assertEqual(route.connections, [connection])
 
     def test_controller_survives_raising_trip_source(self):
         route = make_route([Train(id=0, trip=make_trip("stable"))])

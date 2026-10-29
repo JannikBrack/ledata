@@ -6,12 +6,15 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import live_feed
 from live_feed import (
+    LiveCall,
     LiveFeed,
+    LiveJourney,
     TriasClient,
     TriasError,
     load_requestor_key,
@@ -163,22 +166,44 @@ class FetchTests(unittest.TestCase):
         lead = timedelta(seconds=120)
         expected_refs = []
         for journey in sorted(parsed, key=lambda j: j.calls[0].departure):
-            first_departure = journey.calls[0].departure
-            last_arrival = journey.calls[-1].arrival
+            origin_id = journey.calls[0].station_id
+            if origin_id == 0:
+                destination_id = 21
+            elif origin_id == 21:
+                destination_id = 0
+            else:
+                continue
+            clipped = LiveFeed._clip_journey(
+                self.route,
+                journey,
+                origin_id,
+                destination_id,
+            )
+            if clipped is None:
+                continue
+            first_departure = clipped.calls[0].departure
+            last_arrival = clipped.calls[-1].arrival
             if (first_departure - lead) <= now <= (last_arrival + timedelta(seconds=30)):
-                expected_refs.append(journey.journey_ref)
+                expected_refs.append(clipped.journey_ref)
 
         client = FakeClient(MOOS)
         feed = LiveFeed(client, [self.route])
         result = feed.fetch(now)
 
-        journeys = result[7]
+        journeys = result[7].journeys
         self.assertEqual([j.journey_ref for j in journeys], expected_refs)
         self.assertEqual(len(journeys), len(expected_refs))
         self.assertGreater(len(journeys), 0)
         self.assertLess(len(journeys), 12)
         departures = [j.calls[0].departure for j in journeys]
         self.assertEqual(departures, sorted(departures))
+        self.assertTrue(
+            all(
+                (journey.calls[0].station_id, journey.calls[-1].station_id)
+                in ((0, 21), (21, 0))
+                for journey in journeys
+            )
+        )
         # Both origins were queried with lookback applied.
         self.assertEqual(len(client.calls), 2)
         for _, _, dep_arr_time, _ in client.calls:
@@ -188,21 +213,138 @@ class FetchTests(unittest.TestCase):
         parsed = parse_stop_events(MOOS, STATION_REFS)
         now = self._median_midpoint(parsed)
         result = LiveFeed(FakeClient(MOOS), [self.route]).fetch(now)
-        refs = [j.journey_ref for j in result[7]]
+        refs = [j.journey_ref for j in result[7].journeys]
         self.assertEqual(len(refs), len(set(refs)))
+
+    def test_fetch_uses_closure_snapshot_for_live_journeys(self):
+        parsed = parse_stop_events(MOOS, STATION_REFS)
+        now = self._median_midpoint(parsed)
+        client = FakeClient(MOOS)
+        feed = LiveFeed(
+            client,
+            [self.route],
+            closure_provider=lambda: {7: (10, 13)},
+        )
+
+        result = feed.fetch(now)
+
+        self.assertGreater(len(result[7].journeys), 0)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(
+            {call[0] for call in client.calls},
+            {
+                "de:08311:30800",
+                "de:08311:30300",
+                "de:08311:30106",
+                "de:08311:30119",
+            },
+        )
+        self.assertTrue(
+            all(
+                journey.calls[-1].station_id == 10
+                for journey in result[7].journeys
+            )
+        )
+
+    def test_fetch_pairs_both_directions_but_keeps_physical_segments(self):
+        now = datetime(2026, 10, 27, 8, 0, tzinfo=timezone.utc)
+
+        def segment(ref, station_ids, departure, duration):
+            step = duration / (len(station_ids) - 1)
+            calls = []
+            for index, station_id in enumerate(station_ids):
+                time = departure + step * index
+                calls.append(LiveCall(station_id, time, time, time, time))
+            return LiveJourney(
+                journey_ref=ref,
+                line_ref="line-1",
+                line_name="1",
+                destination=str(station_ids[-1]),
+                calls=calls,
+            )
+
+        journeys_by_origin = {
+            "de:08311:30800": [
+                segment(
+                    "out-first",
+                    list(range(11)),
+                    now - timedelta(minutes=15),
+                    timedelta(minutes=20),
+                )
+            ],
+            "de:08311:30300": [
+                segment(
+                    "in-first",
+                    list(range(21, 12, -1)),
+                    now - timedelta(minutes=15),
+                    timedelta(minutes=20),
+                )
+            ],
+            "de:08311:30106": [
+                segment(
+                    "in-second",
+                    list(range(10, -1, -1)),
+                    now + timedelta(minutes=10),
+                    timedelta(minutes=20),
+                )
+            ],
+            "de:08311:30119": [
+                segment(
+                    "out-second",
+                    list(range(13, 22)),
+                    now + timedelta(minutes=10),
+                    timedelta(minutes=20),
+                )
+            ],
+        }
+
+        class OriginClient:
+            def stop_events(self, origin_ref, *_args):
+                return origin_ref.encode()
+
+        def parse_for_origin(payload, _station_refs):
+            return journeys_by_origin[payload.decode()]
+
+        feed = LiveFeed(
+            OriginClient(),
+            [self.route],
+            lead_seconds=600,
+            closure_provider=lambda: {7: (10, 13)},
+        )
+        with patch.object(live_feed, "parse_stop_events", parse_for_origin):
+            snapshot = feed.fetch(now)[7]
+
+        self.assertEqual(len(snapshot.journeys), 4)
+        self.assertEqual(
+            {
+                (connection.origin_station_id, connection.destination_station_id)
+                for connection in snapshot.connections
+            },
+            {(0, 21), (21, 0)},
+        )
+        self.assertEqual(
+            {
+                (connection.first_journey_ref, connection.second_journey_ref)
+                for connection in snapshot.connections
+            },
+            {
+                ("out-first@0-10", "out-second@13-21"),
+                ("in-first@21-13", "in-second@10-0"),
+            },
+        )
 
     def test_fetch_outside_window_is_empty(self):
         parsed = parse_stop_events(MOOS, STATION_REFS)
         future = max(j.calls[-1].arrival for j in parsed) + timedelta(hours=3)
         result = LiveFeed(FakeClient(MOOS), [self.route]).fetch(future)
-        self.assertEqual(result[7], [])
+        self.assertEqual(result[7].journeys, [])
 
     def test_fetch_continues_after_one_origin_failure(self):
         parsed = parse_stop_events(MOOS, STATION_REFS)
         now = self._median_midpoint(parsed)
         client = FakeClient(MOOS, fail_refs=["de:08311:30300"])
         result = LiveFeed(client, [self.route]).fetch(now)
-        self.assertGreater(len(result[7]), 0)
+        self.assertGreater(len(result[7].journeys), 0)
 
     def test_fetch_raises_when_all_origins_fail(self):
         client = FakeClient(MOOS, fail_refs=["de:08311:30800", "de:08311:30300"])
@@ -210,6 +352,112 @@ class FetchTests(unittest.TestCase):
             LiveFeed(client, [self.route]).fetch(
                 datetime(2026, 10, 27, 9, 30, tzinfo=timezone.utc)
             )
+
+    def test_multi_station_closure_truncates_at_each_directional_terminal(self):
+        outbound = parse_stop_events(MOOS, STATION_REFS)[0]
+        inbound = parse_stop_events(LASS, STATION_REFS)[0]
+
+        outbound_part = LiveFeed._clip_journey(self.route, outbound, 0, 10)
+        inbound_part = LiveFeed._clip_journey(self.route, inbound, 21, 13)
+
+        self.assertEqual(
+            [call.station_id for call in outbound_part.calls],
+            list(range(11)),
+        )
+        self.assertEqual(
+            [call.station_id for call in inbound_part.calls],
+            list(range(21, 12, -1)),
+        )
+        self.assertEqual(outbound_part.destination, self.route["stations"][10]["name"])
+        self.assertEqual(inbound_part.destination, self.route["stations"][13]["name"])
+
+    def test_closure_drops_journey_starting_at_boundary_into_closed_track(self):
+        journey = parse_stop_events(MOOS, STATION_REFS)[0]
+        journey.calls = journey.calls[10:]
+
+        self.assertIsNone(
+            LiveFeed._clip_journey(self.route, journey, 10, 0)
+        )
+
+    def test_leg_matching_uses_five_minute_buffer_and_never_reuses_second_leg(self):
+        now = datetime(2026, 10, 27, 8, 0, tzinfo=timezone.utc)
+
+        def segment(ref, origin, destination, departure, arrival):
+            return LiveJourney(
+                journey_ref=ref,
+                line_ref="line-1",
+                line_name="1",
+                destination=str(destination),
+                calls=[
+                    LiveCall(origin, departure, departure, departure, departure),
+                    LiveCall(destination, arrival, arrival, arrival, arrival),
+                ],
+            )
+
+        first_legs = [
+            segment(
+                "first-1",
+                0,
+                10,
+                now - timedelta(minutes=20),
+                now + timedelta(minutes=10),
+            ),
+            segment(
+                "first-2",
+                0,
+                10,
+                now - timedelta(minutes=19),
+                now + timedelta(minutes=11),
+            ),
+        ]
+        second_legs = [
+            segment(
+                "too-soon",
+                13,
+                21,
+                now + timedelta(minutes=14),
+                now + timedelta(minutes=24),
+            ),
+            segment(
+                "next",
+                13,
+                21,
+                now + timedelta(minutes=15),
+                now + timedelta(minutes=25),
+            ),
+            segment(
+                "later",
+                13,
+                21,
+                now + timedelta(minutes=18),
+                now + timedelta(minutes=28),
+            ),
+        ]
+        feed = LiveFeed(FakeClient(), [self.route])
+
+        connections = feed._pair_legs(
+            first_legs,
+            second_legs,
+            0,
+            21,
+            now,
+        )
+
+        self.assertEqual(
+            [
+                (connection.first_journey_ref, connection.second_journey_ref)
+                for connection in connections
+            ],
+            [("first-1", "next"), ("first-2", "later")],
+        )
+        self.assertEqual(
+            [call.station_id for call in connections[0].first_calls],
+            [0, 10],
+        )
+        self.assertEqual(
+            [call.station_id for call in connections[0].second_calls],
+            [13, 21],
+        )
 
 
 class RequestTests(unittest.TestCase):

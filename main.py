@@ -9,12 +9,22 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from classes import Route, Train, Trip, Stop, Controller
+from classes import (
+    Controller,
+    Route,
+    RouteConnection,
+    RouteLiveData,
+    Stop,
+    Train,
+    Trip,
+)
+from closures import ClosureStore
 from led_backend import PixelStrip, FakeStrip, HAVE_RPI
 from ui import run_ui
 
 META_PATH = Path(__file__).with_name("meta.json")
 FAHRPLAN_PATH = Path(__file__).with_name("fahrplan.json")
+BAUSTELLEN_PATH = Path(__file__).with_name("baustellen.json")
 LOG = logging.getLogger(__name__)
 
 
@@ -66,39 +76,91 @@ def build_trips(fahrplan, route_id, day):
     return []
 
 
-def journeys_to_trips(journeys):
-    """Wandelt Live-Fahrten (live_feed.LiveJourney) in einmalige Trips um.
+def _calls_to_stops(calls):
+    return [
+        Stop(
+            call.station_id,
+            call.arrival,
+            call.departure,
+            reported_delay_seconds=max(
+                0.0,
+                (call.departure - call.planned_departure).total_seconds(),
+            ),
+        )
+        for call in calls
+    ]
 
-    Die Prognosezeiten werden als Fahrzeiten gespeichert; die Abweichung vom
-    Fahrplan bleibt separat pro Halt für die Verspätungsanzeige erhalten.
-    """
+
+def journeys_to_trips(journeys):
+    """Wandelt Live-Fahrten in einmalige Trips mit getrenntem Live-Verzug um."""
     trips = []
     for journey in journeys:
-        stops = [
-            Stop(
-                call.station_id,
-                call.arrival,
-                call.departure,
-                reported_delay_seconds=max(
-                    0.0,
-                    (call.departure - call.planned_departure).total_seconds(),
-                ),
-            )
-            for call in journey.calls
-        ]
         trips.append(
             Trip(
                 id=journey.journey_ref,
                 train_id=journey.journey_ref,
-                stops=stops,
+                stops=_calls_to_stops(journey.calls),
                 cyclic=False,
             )
         )
     return trips
 
 
+def journeys_to_connections(connections):
+    return [
+        RouteConnection(
+            id=connection.id,
+            origin_station_id=connection.origin_station_id,
+            destination_station_id=connection.destination_station_id,
+            first_boundary_station_id=connection.first_boundary_station_id,
+            second_boundary_station_id=connection.second_boundary_station_id,
+            departure=connection.departure,
+            arrival=connection.arrival,
+            transfer_arrival=connection.transfer_arrival,
+            transfer_departure=connection.transfer_departure,
+            delay_seconds=connection.delay_seconds,
+            first_trip_id=connection.first_journey_ref,
+            second_trip_id=connection.second_journey_ref,
+            first_stops=tuple(_calls_to_stops(connection.first_calls)),
+            second_stops=tuple(_calls_to_stops(connection.second_calls)),
+        )
+        for connection in connections
+    ]
+
+
 def _format_log_time(value):
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def confirm_saved_closures_in_terminal(routes, closure_store):
+    if closure_store is None:
+        return
+    for route in routes:
+        closure = closure_store.get(route.id)
+        if closure is None:
+            continue
+        first_name = route.station_names.get(closure[0], str(closure[0]))
+        second_name = route.station_names.get(closure[1], str(closure[1]))
+        while True:
+            answer = input(
+                f"Gibt es die Baustelle zwischen {first_name} und {second_name} "
+                f"auf {route.name} noch? [j/n] "
+            ).strip().lower()
+            if answer in {"j", "ja", "y", "yes"}:
+                break
+            if answer in {"n", "nein", "no"}:
+                closure_store.set(route.id, None)
+                route.set_closed_section(None)
+                break
+            print("Bitte mit j oder n antworten.")
+
+
+def start_application(routes, controller, closure_store, use_ui):
+    confirm_saved_closures_in_terminal(routes, closure_store)
+    if use_ui:
+        run_ui(routes, controller, closure_store)
+    else:
+        controller.start()
 
 
 def _log_live_snapshot(route_config, journeys):
@@ -130,7 +192,7 @@ def _log_live_snapshot(route_config, journeys):
             )
 
 
-def build_live_source(meta):
+def build_live_source(meta, closure_store=None):
     """Liefert eine Funktion now -> {route_id: [Trip]} auf Basis der TRIAS-API."""
     from live_feed import LiveFeed, TriasClient, load_requestor_key
 
@@ -142,16 +204,23 @@ def build_live_source(meta):
         meta["routes"],
         lookback_minutes=trias.get("lookback_minutes", 45),
         lead_seconds=trias.get("lead_seconds", 120),
+        closure_provider=closure_store.snapshot if closure_store is not None else None,
     )
     route_configs = {route["id"]: route for route in meta["routes"]}
 
     def source(now):
         snapshot = feed.fetch(now)
-        for route_id, journeys in snapshot.items():
+        for route_id, route_snapshot in snapshot.items():
             route_config = route_configs.get(route_id)
             if route_config is not None:
-                _log_live_snapshot(route_config, journeys)
-        return {route_id: journeys_to_trips(journeys) for route_id, journeys in snapshot.items()}
+                _log_live_snapshot(route_config, route_snapshot.journeys)
+        return {
+            route_id: RouteLiveData(
+                journeys_to_trips(route_snapshot.journeys),
+                journeys_to_connections(route_snapshot.connections),
+            )
+            for route_id, route_snapshot in snapshot.items()
+        }
 
     return source
 
@@ -214,6 +283,16 @@ if __name__ == "__main__":
 
     meta = load_json(META_PATH)
     live = args.source == "live"
+    closure_store = None
+    if live:
+        closure_store = ClosureStore(
+            BAUSTELLEN_PATH,
+            {
+                route["id"]: [station["id"] for station in route["stations"]]
+                for route in meta["routes"]
+            },
+        )
+        closure_store.load()
     fahrplan = [] if live else load_json(FAHRPLAN_PATH)["fahrplan"]
     today = datetime.now(timezone.utc).date()
 
@@ -222,19 +301,19 @@ if __name__ == "__main__":
     strip.begin()
 
     routes = [build_route(route_config, fahrplan, today, live=live) for route_config in meta["routes"]]
+    if closure_store is not None:
+        for route in routes:
+            route.set_closed_section(closure_store.get(route.id))
 
     controller = Controller(routes, strip)
     controller.tickinterval = meta["tickinterval_ms"]
     controller.resync_interval_seconds = meta.get("resync_interval_seconds", 60)
     if live:
-        controller.trip_source = build_live_source(meta)
+        controller.trip_source = build_live_source(meta, closure_store)
         controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
     use_ui = args.ui if args.ui is not None else HAVE_RPI and not args.dry_run
     try:
-        if use_ui:
-            run_ui(routes, controller)
-        else:
-            controller.start()
+        start_application(routes, controller, closure_store, use_ui)
     except KeyboardInterrupt:
         pass
     finally:

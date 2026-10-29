@@ -4,6 +4,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from led_backend import PixelStrip, Color
@@ -203,6 +204,30 @@ class Trip():
         end = self.arrival_at(0) + offset + self.cycle
         # bei Verspaetung groesser als die Wendezeit bleibt keine Zeit fuer die Rueckfahrt
         return last, "fahrend", begin, max(begin, end)
+
+
+@dataclass(frozen=True)
+class RouteConnection:
+    id: str
+    origin_station_id: int
+    destination_station_id: int
+    first_boundary_station_id: int
+    second_boundary_station_id: int
+    departure: datetime
+    arrival: datetime
+    transfer_arrival: datetime
+    transfer_departure: datetime
+    delay_seconds: float
+    first_trip_id: str | int | None = None
+    second_trip_id: str | int | None = None
+    first_stops: tuple[Stop, ...] = ()
+    second_stops: tuple[Stop, ...] = ()
+
+
+@dataclass
+class RouteLiveData:
+    trips: list[Trip]
+    connections: list[RouteConnection]
 
 
 class Train():
@@ -413,8 +438,10 @@ class Route():
         self.trains = trains
 
         self.trips = trips or []
+        self.connections: list[RouteConnection] = []
 
         self.color = color
+        self.closed_section: tuple[int, int] | None = None
 
         self.start_of_route = start_of_route
         self.end_of_route = start_of_route + self.max_led_count - 1
@@ -441,6 +468,22 @@ class Route():
             if station.id == station_id:
                 return station.position
         return self.start_of_route
+
+    def set_closed_section(self, station_ids: tuple[int, int] | None):
+        if station_ids is None:
+            self.closed_section = None
+            return
+        station_positions = {
+            station.id: index for index, station in enumerate(self.stations)
+        }
+        try:
+            first_index = station_positions[station_ids[0]]
+            second_index = station_positions[station_ids[1]]
+        except KeyError as exc:
+            raise ValueError(f"Unknown station in closed section: {exc.args[0]}") from exc
+        if first_index == second_index:
+            raise ValueError("A closed section must have different endpoint stations")
+        self.closed_section = station_ids
 
     def trip_for_train(self, train_id):
         for trip in self.trips:
@@ -484,17 +527,33 @@ class Route():
         for train in self.trains:
             train.move(self)
 
+
+def train_direction_destination_id(route: Route, train: Train) -> int:
+    if not route.stations:
+        raise ValueError(f"Route {route.id} has no stations")
+    if route.closed_section is not None or train.trip.cyclic:
+        return (
+            route.stations[-1].id
+            if train.direction >= 0
+            else route.stations[0].id
+        )
+    return train.trip.stops[-1].station_id
+
+
 class Controller():
     routes: list[Route]
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
-    trip_source: Callable[[datetime], dict[int, list[Trip]]] | None = None # liefert live {route_id: [Trip]}, darf werfen
+    trip_source: Callable[
+        [datetime], dict[int, list[Trip] | RouteLiveData]
+    ] | None = None # liefert live {route_id: [Trip]}, darf werfen
     live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
     stopped: bool = True
     selected_train: tuple[int, str | int] | None = None
+    selected_direction: tuple[int, int] | None = None
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -503,12 +562,24 @@ class Controller():
         self._live_queue = queue.Queue()
         self._live_thread = None
         self.selected_train = None
+        self.selected_direction = None
 
     def select_train(self, route_id: int | None, train_id: str | int | None = None):
-        """Limit rendering to one train, or restore the complete LED display."""
+        """Limit rendering to one train; a missing selection clears that limit."""
         self.selected_train = (
             (route_id, train_id)
             if route_id is not None and train_id is not None
+            else None
+        )
+        if self.selected_train is not None:
+            self.selected_direction = None
+
+    def select_direction(self, route_id: int | None, destination_id: int | None):
+        """Limit rendering to trains heading toward one route endpoint."""
+        self.selected_train = None
+        self.selected_direction = (
+            (route_id, destination_id)
+            if route_id is not None and destination_id is not None
             else None
         )
 
@@ -539,6 +610,15 @@ class Controller():
                 ]
             else:
                 active_trains = []
+        elif self.selected_direction is not None:
+            selected_route_id, destination_id = self.selected_direction
+            if route.id == selected_route_id:
+                active_trains = [
+                    train for train in active_trains
+                    if train_direction_destination_id(route, train) == destination_id
+                ]
+            else:
+                active_trains = []
         stopped_positions = {train.position for train in active_trains if train.at_station}
 
         for station in route.stations:
@@ -554,6 +634,15 @@ class Controller():
                 continue
             for position in train.occupied_positions():
                 self.set_pixel(position, Color(*route.color))
+
+        if route.closed_section is not None:
+            first_position = route.position_of_station(route.closed_section[0])
+            second_position = route.position_of_station(route.closed_section[1])
+            for position in range(
+                min(first_position, second_position) + 1,
+                max(first_position, second_position),
+            ):
+                self.set_pixel(position, Color(255, 128, 0))
 
     def set_pixel(self, position, color):
         if 0 <= position < self.strip.numPixels():
@@ -655,12 +744,19 @@ class Controller():
                 logger.warning("Unerwartete Live-Daten vom Typ %s ignoriert", type(snapshot))
                 continue
             for route in self.routes:
-                trips = snapshot.get(route.id)
-                if trips is None:
+                route_data = snapshot.get(route.id)
+                if route_data is None:
                     continue
                 previous_states = self._capture_arrival_states(route)
                 try:
+                    if isinstance(route_data, RouteLiveData):
+                        trips = route_data.trips
+                        connections = route_data.connections
+                    else:
+                        trips = list(route_data)
+                        connections = []
                     route.set_trips(list(trips), now, minute_value)
+                    route.connections = list(connections)
                     self._log_arrival_transitions(route, previous_states)
                 except Exception:
                     logger.exception("Live-Umlaeufe fuer Route %s konnten nicht angewendet werden", route.id)

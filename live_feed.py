@@ -60,6 +60,30 @@ class LiveJourney:
         return max(0.0, max(delays))
 
 
+@dataclass(frozen=True)
+class LiveConnection:
+    id: str
+    origin_station_id: int
+    destination_station_id: int
+    first_boundary_station_id: int
+    second_boundary_station_id: int
+    departure: datetime
+    arrival: datetime
+    transfer_arrival: datetime
+    transfer_departure: datetime
+    delay_seconds: float
+    first_journey_ref: str
+    second_journey_ref: str
+    first_calls: tuple[LiveCall, ...] = ()
+    second_calls: tuple[LiveCall, ...] = ()
+
+
+@dataclass
+class LiveRouteSnapshot:
+    journeys: list[LiveJourney] = field(default_factory=list)
+    connections: list[LiveConnection] = field(default_factory=list)
+
+
 def station_key(stop_point_ref: str) -> str:
     """Return the station-level part of a platform-level stop ref."""
     return ":".join((stop_point_ref or "").strip().split(":")[:3])
@@ -289,18 +313,151 @@ class LiveFeed:
         lookback_minutes=45,
         lead_seconds=120,
         number_of_results=12,
+        closure_provider=None,
     ):
         self.client = client
         self.routes = routes
         self.lookback_minutes = lookback_minutes
         self.lead_seconds = lead_seconds
         self.number_of_results = number_of_results
+        self.closure_provider = closure_provider
+
+    @staticmethod
+    def _clip_journey(route, journey, origin_id, destination_id):
+        if not journey.calls or journey.calls[0].station_id != origin_id:
+            return None
+        station_ids = [station["id"] for station in route["stations"]]
+        station_order = {
+            station_id: index for index, station_id in enumerate(station_ids)
+        }
+        if origin_id not in station_order or destination_id not in station_order:
+            raise ValueError("Journey endpoint is not part of the configured route")
+
+        try:
+            terminal_index = next(
+                index
+                for index, call in enumerate(journey.calls)
+                if call.station_id == destination_id
+            )
+        except StopIteration:
+            return None
+        if terminal_index == 0:
+            return None
+
+        direction = (
+            1
+            if station_order[destination_id] > station_order[origin_id]
+            else -1
+        )
+        calls = journey.calls[:terminal_index + 1]
+        call_indices = [station_order[call.station_id] for call in calls]
+        if any(
+            (later - earlier) * direction < 0
+            for earlier, later in zip(call_indices, call_indices[1:])
+        ):
+            return None
+
+        names = {
+            station["id"]: station.get("name", str(station["id"]))
+            for station in route["stations"]
+        }
+        return LiveJourney(
+            journey_ref=f"{journey.journey_ref}@{origin_id}-{destination_id}",
+            line_ref=journey.line_ref,
+            line_name=journey.line_name,
+            destination=names[destination_id],
+            calls=calls,
+        )
+
+    @staticmethod
+    def _journey_is_active(journey, now, lead_seconds):
+        if not journey.calls:
+            return False
+        start = journey.calls[0].departure - timedelta(seconds=lead_seconds)
+        end = journey.calls[-1].arrival + timedelta(
+            seconds=ACTIVE_END_GRACE_SECONDS
+        )
+        return start <= now <= end
+
+    def _pair_legs(
+        self,
+        first_legs,
+        second_legs,
+        origin_id,
+        destination_id,
+        now,
+    ):
+        transfer_buffer = timedelta(minutes=5)
+        available_second_legs = sorted(
+            second_legs,
+            key=lambda journey: (journey.calls[0].departure, journey.journey_ref),
+        )
+        used_second_refs = set()
+        connections = []
+        for first in sorted(
+            first_legs,
+            key=lambda journey: (
+                journey.calls[-1].arrival,
+                journey.journey_ref,
+            ),
+        ):
+            earliest_departure = first.calls[-1].arrival + transfer_buffer
+            second = next(
+                (
+                    journey
+                    for journey in available_second_legs
+                    if journey.journey_ref not in used_second_refs
+                    and journey.calls[0].departure >= earliest_departure
+                ),
+                None,
+            )
+            if second is None:
+                continue
+            used_second_refs.add(second.journey_ref)
+            connections.append(
+                LiveConnection(
+                    id=f"{first.journey_ref}|{second.journey_ref}",
+                    origin_station_id=origin_id,
+                    destination_station_id=destination_id,
+                    first_boundary_station_id=first.calls[-1].station_id,
+                    second_boundary_station_id=second.calls[0].station_id,
+                    departure=first.calls[0].departure,
+                    arrival=second.calls[-1].arrival,
+                    transfer_arrival=first.calls[-1].arrival,
+                    transfer_departure=second.calls[0].departure,
+                    delay_seconds=max(
+                        first.delay_seconds,
+                        second.delay_seconds,
+                    ),
+                    first_journey_ref=first.journey_ref,
+                    second_journey_ref=second.journey_ref,
+                    first_calls=tuple(first.calls),
+                    second_calls=tuple(second.calls),
+                )
+            )
+
+        return [
+            connection
+            for connection in connections
+            if (
+                connection.departure - timedelta(seconds=self.lead_seconds)
+                <= now
+                <= connection.arrival + timedelta(
+                    seconds=ACTIVE_END_GRACE_SECONDS
+                )
+            )
+        ]
 
     def fetch(self, now):
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
         result = {}
+        closures = (
+            self.closure_provider()
+            if self.closure_provider is not None
+            else {}
+        )
         for route in self.routes:
             route_id = route["id"]
             trias = route["trias"]
@@ -312,9 +469,59 @@ class LiveFeed:
             }
             dep_arr_time = now - timedelta(minutes=self.lookback_minutes)
 
-            by_ref = {}
+            closure = closures.get(route_id)
+            stations = route["stations"]
+            station_ids = [station["id"] for station in stations]
+            station_order = {
+                station_id: index for index, station_id in enumerate(station_ids)
+            }
+            refs_by_station_id = {
+                station["id"]: station["trias_ref"] for station in stations
+            }
+            if closure is None:
+                requests = [
+                    (station_refs[station_key(origin_ref)], origin_ref)
+                    for origin_ref in origin_refs
+                ]
+            else:
+                first_boundary, second_boundary = closure
+                if first_boundary not in station_order or second_boundary not in station_order:
+                    raise ValueError(f"Closure contains an unknown station on route {route_id}")
+                low_boundary, high_boundary = sorted(
+                    closure,
+                    key=station_order.__getitem__,
+                )
+                left_endpoint = station_ids[0]
+                right_endpoint = station_ids[-1]
+                origin_ref_by_id = {
+                    station_refs[station_key(origin_ref)]: origin_ref
+                    for origin_ref in origin_refs
+                }
+                request_station_ids = (
+                    left_endpoint,
+                    right_endpoint,
+                    low_boundary,
+                    high_boundary,
+                )
+                requests = []
+                seen_station_ids = set()
+                for station_id in request_station_ids:
+                    if station_id in seen_station_ids:
+                        continue
+                    seen_station_ids.add(station_id)
+                    requests.append(
+                        (
+                            station_id,
+                            origin_ref_by_id.get(
+                                station_id,
+                                refs_by_station_id[station_id],
+                            ),
+                        )
+                    )
+
+            journeys_by_origin = {}
             failures = 0
-            for origin_ref in origin_refs:
+            for origin_id, origin_ref in requests:
                 try:
                     payload = self.client.stop_events(
                         origin_ref,
@@ -332,26 +539,108 @@ class LiveFeed:
                         exc,
                     )
                     continue
-                for journey in journeys:
-                    by_ref[journey.journey_ref] = journey
+                journeys_by_origin[origin_id] = journeys
 
-            if failures and failures == len(origin_refs):
+            if failures and failures == len(requests):
                 raise TriasError(
                     "All TRIAS requests failed for route %s" % route_id
                 )
 
-            active = []
-            for journey in by_ref.values():
-                if not journey.calls:
-                    continue
-                start = journey.calls[0].departure - timedelta(seconds=self.lead_seconds)
-                end = journey.calls[-1].arrival + timedelta(
-                    seconds=ACTIVE_END_GRACE_SECONDS
+            if closure is None:
+                left_endpoint = station_ids[0]
+                right_endpoint = station_ids[-1]
+                by_ref = {}
+                for origin_id, journeys in journeys_by_origin.items():
+                    if origin_id == left_endpoint:
+                        destination_id = right_endpoint
+                    elif origin_id == right_endpoint:
+                        destination_id = left_endpoint
+                    else:
+                        continue
+                    for journey in journeys:
+                        clipped = self._clip_journey(
+                            route,
+                            journey,
+                            origin_id,
+                            destination_id,
+                        )
+                        if clipped is not None:
+                            by_ref[clipped.journey_ref] = clipped
+                active = [
+                    journey
+                    for journey in by_ref.values()
+                    if self._journey_is_active(
+                        journey,
+                        now,
+                        self.lead_seconds,
+                    )
+                ]
+                active.sort(key=lambda journey: journey.calls[0].departure)
+                result[route_id] = LiveRouteSnapshot(journeys=active)
+                continue
+
+            first_boundary, second_boundary = closure
+            low_boundary, high_boundary = sorted(
+                closure,
+                key=station_order.__getitem__,
+            )
+            left_endpoint = station_ids[0]
+            right_endpoint = station_ids[-1]
+            leg_specs = (
+                (left_endpoint, low_boundary),
+                (low_boundary, left_endpoint),
+                (right_endpoint, high_boundary),
+                (high_boundary, right_endpoint),
+            )
+            legs_by_pair = {}
+            all_segments = {}
+            for origin_id, destination_id in leg_specs:
+                clipped_by_ref = {}
+                for journey in journeys_by_origin.get(origin_id, []):
+                    clipped = self._clip_journey(
+                        route,
+                        journey,
+                        origin_id,
+                        destination_id,
+                    )
+                    if clipped is not None:
+                        clipped_by_ref[clipped.journey_ref] = clipped
+                legs_by_pair[(origin_id, destination_id)] = list(
+                    clipped_by_ref.values()
                 )
-                if start <= now <= end:
-                    active.append(journey)
-            active.sort(key=lambda journey: journey.calls[0].departure)
-            result[route_id] = active
+                all_segments.update(clipped_by_ref)
+
+            connections = self._pair_legs(
+                legs_by_pair[(left_endpoint, low_boundary)],
+                legs_by_pair[(high_boundary, right_endpoint)],
+                left_endpoint,
+                right_endpoint,
+                now,
+            )
+            connections.extend(
+                self._pair_legs(
+                    legs_by_pair[(right_endpoint, high_boundary)],
+                    legs_by_pair[(low_boundary, left_endpoint)],
+                    right_endpoint,
+                    left_endpoint,
+                    now,
+                )
+            )
+            active_segments = [
+                journey
+                for journey in all_segments.values()
+                if self._journey_is_active(
+                    journey,
+                    now,
+                    self.lead_seconds,
+                )
+            ]
+            active_segments.sort(key=lambda journey: journey.calls[0].departure)
+            connections.sort(key=lambda connection: connection.departure)
+            result[route_id] = LiveRouteSnapshot(
+                journeys=active_segments,
+                connections=connections,
+            )
         return result
 
 
