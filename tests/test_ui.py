@@ -242,6 +242,30 @@ class TrainTableLayoutTests(unittest.TestCase):
             anchor="center",
         )
 
+    def test_connection_rows_leave_warning_in_heading_not_row(self):
+        app = TramUI.__new__(TramUI)
+        app.route = make_route()
+        app.route.closed_section = (1, 2)
+        app._tree = MagicMock()
+        app._tree.exists.return_value = False
+        connection = RouteConnection(
+            id="outbound",
+            origin_station_id=0,
+            destination_station_id=2,
+            first_boundary_station_id=1,
+            second_boundary_station_id=2,
+            departure=START,
+            arrival=START + timedelta(minutes=20),
+            transfer_arrival=START + timedelta(minutes=10),
+            transfer_departure=START + timedelta(minutes=15),
+            delay_seconds=0,
+        )
+
+        app._refresh_connection_table([connection])
+
+        row_values = app._tree.insert.call_args.kwargs["values"]
+        self.assertEqual(row_values[1], "")
+
 
 class DirectionFilterUITests(unittest.TestCase):
     def test_direction_button_updates_controller_selection(self):
