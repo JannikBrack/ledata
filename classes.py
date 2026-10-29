@@ -1,8 +1,17 @@
+import logging
 import math
+import queue
+import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
-from rpi_ws281x import PixelStrip, Color
+from led_backend import PixelStrip, Color
+
+# Schrittweises Debug-Logging beim Bewegen (auf dem Pi sonst sehr laut)
+DEBUG = False
+
+logger = logging.getLogger(__name__)
 
 
 def parse_utc(value) -> datetime:
@@ -25,17 +34,29 @@ class Stop():
 
     delay_seconds ist die Verspaetung, die an diesem Halt entsteht. Sie wirkt
     kumulativ, verschiebt also auch alle folgenden Halte des Umlaufs.
+    reported_delay_seconds speichert optional die Live-Abweichung an diesem Halt.
     """
     station_id: int
     arrival: datetime
     departure: datetime
     delay_seconds: float
+    reported_delay_seconds: float | None
 
-    def __init__(self, station_id, arrival, departure, delay_seconds=0.0) -> None:
+    def __init__(
+        self,
+        station_id,
+        arrival,
+        departure,
+        delay_seconds=0.0,
+        reported_delay_seconds=None,
+    ) -> None:
         self.station_id = station_id
         self.arrival = parse_utc(arrival)
         self.departure = parse_utc(departure)
         self.delay_seconds = float(delay_seconds)
+        self.reported_delay_seconds = (
+            None if reported_delay_seconds is None else float(reported_delay_seconds)
+        )
 
     @property
     def dwell_seconds(self) -> float:
@@ -67,10 +88,11 @@ class Trip():
     stops: list[Stop]
     cycle_seconds: float
 
-    def __init__(self, id, train_id, stops, cycle_seconds=None) -> None:
+    def __init__(self, id, train_id, stops, cycle_seconds=None, cyclic=True) -> None:
         self.id = id
         self.train_id = train_id
         self.stops = stops
+        self.cyclic = bool(cyclic)
         if cycle_seconds:
             self.cycle_seconds = float(cycle_seconds)
         else:
@@ -130,7 +152,16 @@ class Trip():
 
     def cycle_offset(self, now) -> timedelta:
         """Wie weit der laufende Zyklus gegenueber dem Fahrplan verschoben ist."""
+        if not self.cyclic:
+            # Einmaliger Umlauf: die Fahrplanzeiten gelten absolut
+            return timedelta(0)
         return math.floor((now - self.start_time) / self.cycle) * self.cycle
+
+    def is_active(self, now) -> bool:
+        """Ist der Zug zu 'now' im Einsatz? Zyklische Umlaeufe sind es immer."""
+        if self.cyclic:
+            return True
+        return self.arrival_at(0) <= now <= self.departure_at(len(self.stops) - 1)
 
     def locate(self, now):
         """Wo sich der Zug zum Zeitpunkt 'now' befindet.
@@ -140,9 +171,18 @@ class Trip():
           seine Ankunfts- und Abfahrtszeit
         - zustand 'fahrend': der Zug ist unterwegs vom Halt 'index' zum
           naechsten, beginn/ende sind Abfahrts- und Ankunftszeit
+
+        Einmalige Umlaeufe (cyclic=False) umlaufen nicht: vor dem Start und
+        nach dem Ende steht der Zug haltend am ersten bzw. letzten Halt.
         """
-        offset = self.cycle_offset(now)
         last = len(self.stops) - 1
+        if not self.cyclic:
+            if now < self.arrival_at(0):
+                return 0, "haltend", now, self.departure_at(0)
+            if now > self.departure_at(last):
+                return last, "haltend", self.arrival_at(last), now
+
+        offset = self.cycle_offset(now)
         for index in range(len(self.stops)):
             arrival = self.arrival_at(index) + offset
             if now < arrival:
@@ -153,6 +193,11 @@ class Trip():
                 return previous, "fahrend", self.departure_at(previous) + offset, arrival
             if now < self.departure_at(index) + offset:
                 return index, "haltend", arrival, self.departure_at(index) + offset
+
+        if not self.cyclic:
+            # innerhalb der letzten Haltezeit, aber nach der Ankunft
+            return last, "haltend", self.arrival_at(last), self.departure_at(last)
+
         # nach der letzten Abfahrt faehrt der Zug zurueck zum Start des naechsten Zyklus
         begin = self.departure_at(last) + offset
         end = self.arrival_at(0) + offset + self.cycle
@@ -226,7 +271,8 @@ class Train():
             self.at_station = False
             self.ticks_to_move = self.ticks_per_led
 
-        print(self)
+        if DEBUG:
+            print(self)
 
     def occupied_positions(self) -> list[int]:
         # the train covers its head position plus the leds behind it
@@ -245,6 +291,18 @@ class Train():
         trip = self.trip
         index = self.stop_index
         departure = trip.departure_at(index) + self.cycle_offset
+
+        if not trip.cyclic and index >= len(trip.stops) - 1:
+            # Einmaliger Umlauf: am letzten Halt bleibt der Zug einfach stehen
+            self.next_index = index
+            self.departure_time = departure
+            self.arrival_time = trip.arrival_at(index) + self.cycle_offset
+            position = route.position_of_station(trip.stops[index].station_id)
+            self.position = position
+            self.target_position = position
+            self.distance = 0
+            self.set_pace(0, 0)
+            return
 
         next_index = index + 1
         if next_index >= len(trip.stops):
@@ -308,7 +366,9 @@ class Station():
 
 class Route():
     id: int
+    name: str
     stations: list[Station]
+    station_names: dict[int, str]
     trains: list[Train]
     trips: list[Trip]
     color: tuple[int, int, int]
@@ -317,8 +377,19 @@ class Route():
     end_of_route: int
 
     # station_information is a var that will get a array of numbers representing the route defined in main.py
-    def __init__(self, id, route_information, trains, color, start_of_route, trips=None) -> None:
+    def __init__(
+        self,
+        id,
+        route_information,
+        trains,
+        color,
+        start_of_route,
+        trips=None,
+        station_names: dict[int, str] | None = None,
+        name: str | None = None,
+    ) -> None:
         self.id = id
+        self.name = name or f"Linie {id}"
 
         station_id = 0
         stations: list[Station] = []
@@ -337,6 +408,7 @@ class Route():
             self.max_led_count += number_led
 
         self.stations = stations
+        self.station_names = station_names or {}
 
         self.trains = trains
 
@@ -376,6 +448,27 @@ class Route():
                 return trip
         return None
 
+    def set_trips(self, trips: list[Trip], now: datetime, minute_value: int):
+        """Ersetzt die Umlaeufe und gleicht die Zuege an die neue Trip-Menge an.
+
+        Zuege, deren Trip-ID weiterhin existiert, behalten ihr Train-Objekt
+        (nur der Trip wird getauscht). Neue IDs erzeugen neue Zuege, fehlende
+        Zuege werden entfernt. self.trains folgt der Reihenfolge von trips.
+        """
+        existing = {train.trip.id: train for train in self.trains}
+        trains: list[Train] = []
+        for trip in trips:
+            train = existing.pop(trip.id, None)
+            if train is None:
+                train = Train(id=trip.id, trip=trip)
+            else:
+                train.trip = trip
+            train.minute_value = minute_value
+            train.sync_to_time(self, now)
+            trains.append(train)
+        self.trips = list(trips)
+        self.trains = trains
+
     def distance_to_next_station(self, position, direction) -> int:
         positions_ahead = [
             station.position
@@ -396,14 +489,28 @@ class Controller():
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
+    trip_source: Callable[[datetime], dict[int, list[Trip]]] | None = None # liefert live {route_id: [Trip]}, darf werfen
+    live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
     stopped: bool = True
+    selected_train: tuple[int, str | int] | None = None
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
         self.strip = strip
         self.ticks = 0
+        self._live_queue = queue.Queue()
+        self._live_thread = None
+        self.selected_train = None
+
+    def select_train(self, route_id: int | None, train_id: str | int | None = None):
+        """Limit rendering to one train, or restore the complete LED display."""
+        self.selected_train = (
+            (route_id, train_id)
+            if route_id is not None and train_id is not None
+            else None
+        )
 
     def __str__(self) -> str:
         return (
@@ -419,8 +526,20 @@ class Controller():
         return (self.ticks // ticks_per_blink) % 2 == 0
 
     def draw(self, route: Route):
+        now = datetime.now(timezone.utc)
         blink_on = self.is_blink_on()
-        stopped_positions = {train.position for train in route.trains if train.at_station}
+        # Zuege ohne laufenden Umlauf (live: vor Start / nach Ende) nicht zeichnen
+        active_trains = [train for train in route.trains if train.trip.is_active(now)]
+        if self.selected_train is not None:
+            selected_route_id, selected_train_id = self.selected_train
+            if route.id == selected_route_id:
+                active_trains = [
+                    train for train in active_trains
+                    if train.trip.id == selected_train_id
+                ]
+            else:
+                active_trains = []
+        stopped_positions = {train.position for train in active_trains if train.at_station}
 
         for station in route.stations:
             if station.position in stopped_positions:
@@ -429,7 +548,7 @@ class Controller():
             else:
                 self.set_pixel(station.position, Color(255, 255, 255))
 
-        for train in route.trains:
+        for train in active_trains:
             if train.at_station:
                 # in a station the train is only the single blinking dot of the station
                 continue
@@ -444,12 +563,107 @@ class Controller():
         for i in range(self.strip.numPixels()):
             self.strip.setPixelColor(i, Color(0, 0, 0))
 
-    def sync_trains(self):
+    def sync_trains(self, log_arrivals=False):
         """Setzt alle Zuege auf die Position, die zur aktuellen UTC-Zeit gehoert."""
         now = datetime.now(timezone.utc)
         for route in self.routes:
+            previous_states = self._capture_arrival_states(route) if log_arrivals else None
             for train in route.trains:
                 train.sync_to_time(route, now)
+            if previous_states is not None:
+                self._log_arrival_transitions(route, previous_states)
+
+    @staticmethod
+    def _capture_arrival_states(route):
+        return {
+            train.trip.id: (train, train.at_station, train.stop_index)
+            for train in route.trains
+        }
+
+    def _log_arrival_transitions(self, route, previous_states):
+        for train in route.trains:
+            previous = previous_states.get(train.trip.id)
+            if (
+                previous is None
+                or previous[0] is not train
+                or previous[1]
+                or not train.at_station
+                or previous[2] == train.stop_index
+            ):
+                continue
+
+            stops = train.trip.stops
+            station_id = stops[train.stop_index].station_id
+            station_name = route.station_names.get(station_id, str(station_id))
+            if not train.trip.cyclic and train.stop_index == len(stops) - 1:
+                logger.info(
+                    "Route %s: Zug %s bei %s angekommen; keine weitere Haltestelle",
+                    route.id,
+                    train.trip.id,
+                    station_name,
+                )
+                continue
+
+            next_station_id = stops[train.next_index].station_id
+            next_station_name = route.station_names.get(
+                next_station_id, str(next_station_id)
+            )
+            eta = format_utc(train.arrival_time) if train.arrival_time else "unbekannt"
+            logger.info(
+                "Route %s: Zug %s bei %s angekommen; naechstes Ziel %s, "
+                "voraussichtliche Ankunft %s",
+                route.id,
+                train.trip.id,
+                station_name,
+                next_station_name,
+                eta,
+            )
+
+    def _move_trains(self, route):
+        previous_states = self._capture_arrival_states(route)
+        route.move_trains()
+        self._log_arrival_transitions(route, previous_states)
+
+    def _live_worker(self) -> None:
+        """Fragt trip_source in einem eigenen Thread ab; Netzwerk blockiert nie den Hauptloop."""
+        trip_source = self.trip_source
+        if trip_source is None:
+            return
+        while not self.stopped:
+            try:
+                snapshot = trip_source(datetime.now(timezone.utc))
+                if snapshot is not None:
+                    self._live_queue.put(snapshot)
+            except Exception:
+                # Fehler beim Abruf: alte Zuege bleiben einfach stehen
+                logger.exception("Live-Fahrplandaten konnten nicht geladen werden")
+            waited = 0.0
+            step = 0.05
+            while not self.stopped and waited < self.live_refresh_seconds:
+                time.sleep(min(step, self.live_refresh_seconds - waited))
+                waited += step
+
+    def _drain_live_queue(self, minute_value: int) -> None:
+        """Wendet die zuletzt eingetroffenen Live-Umlaeufe an (ohne zu blockieren)."""
+        now = datetime.now(timezone.utc)
+        while True:
+            try:
+                snapshot = self._live_queue.get_nowait()
+            except queue.Empty:
+                return
+            if not isinstance(snapshot, dict):
+                logger.warning("Unerwartete Live-Daten vom Typ %s ignoriert", type(snapshot))
+                continue
+            for route in self.routes:
+                trips = snapshot.get(route.id)
+                if trips is None:
+                    continue
+                previous_states = self._capture_arrival_states(route)
+                try:
+                    route.set_trips(list(trips), now, minute_value)
+                    self._log_arrival_transitions(route, previous_states)
+                except Exception:
+                    logger.exception("Live-Umlaeufe fuer Route %s konnten nicht angewendet werden", route.id)
 
     def start(self):
         self.stopped = False
@@ -457,16 +671,25 @@ class Controller():
         for route in self.routes:
             for train in route.trains:
                 train.minute_value = minute_value
+        if self.trip_source is not None:
+            self._live_thread = threading.Thread(
+                target=self._live_worker,
+                name="live-trip-source",
+                daemon=True,
+            )
+            self._live_thread.start()
         self.sync_trains()
         ticks_per_resync = max(1, round(self.resync_interval_seconds * 1000 / self.tickinterval))
         while not self.stopped:
             self.ticks += 1
+            if self.trip_source is not None:
+                self._drain_live_queue(minute_value)
             if self.ticks % ticks_per_resync == 0:
                 # regelmaessiger Abgleich, damit sich Rundungsfehler nicht aufsummieren
-                self.sync_trains()
+                self.sync_trains(log_arrivals=True)
             self.reset_strip()
             for route in self.routes:
-                route.move_trains()
+                self._move_trains(route)
                 self.draw(route)
             self.strip.show()
             time.sleep(self.tickinterval / 1000)
