@@ -336,6 +336,7 @@ class TramUI:
         self.root.configure(background="#f3f5f7")
         self.root.bind("<Escape>", lambda _event: self.go_back())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.controller.require_route_selection()
         self.show_routes()
         self.root.after(1000, self.refresh)
 
@@ -373,6 +374,7 @@ class TramUI:
         ).pack(side="right")
 
     def show_routes(self):
+        self.controller.select_route(None)
         self.controller.select_train(None)
         self.controller.select_direction(None, None)
         self.route = None
@@ -578,6 +580,7 @@ class TramUI:
 
     def show_trains(self, route_id: int):
         self.route = next(route for route in self.routes if route.id == route_id)
+        self.controller.select_route(route_id)
         self.controller.select_train(None)
         self.controller.select_direction(None, None)
         self.screen = "trains"
@@ -1245,6 +1248,7 @@ class TramUI:
             pass
 
     def close(self):
+        self.controller.select_route(None)
         self.controller.select_train(None)
         self.controller.stop()
         self.root.destroy()

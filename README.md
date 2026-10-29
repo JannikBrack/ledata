@@ -13,6 +13,11 @@ Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
 etwaige Baustellenmarkierung bleiben sichtbar.
+Im Live-Modus werden in der Touchscreen-Oberfläche nur Daten der ausgewählten
+Linie abgefragt. Auf der Linienauswahlseite bleibt der LED-Streifen aus und es
+werden keine Live-Abfragen ausgeführt. In der Linienübersicht leuchten alle
+aktiven Bahnen der gewählten Linie; in der Detailansicht nur die ausgewählte
+Bahn. Im Terminalbetrieb bleibt das bisherige Abrufverhalten bestehen.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.

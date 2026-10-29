@@ -208,8 +208,8 @@ def build_live_source(meta, closure_store=None):
     )
     route_configs = {route["id"]: route for route in meta["routes"]}
 
-    def source(now):
-        snapshot = feed.fetch(now)
+    def source(now, route_id=None):
+        snapshot = feed.fetch(now, route_id=route_id)
         for route_id, route_snapshot in snapshot.items():
             route_config = route_configs.get(route_id)
             if route_config is not None:

@@ -87,6 +87,7 @@ class RouteSelectionUITests(unittest.TestCase):
             call.kwargs["text"] for call in app.tk.Button.call_args_list
         ]
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
+        app.controller.select_route.assert_called_once_with(None)
 
     def test_train_plan_header_shows_closure_next_to_route_name(self):
         route = make_route()
@@ -106,6 +107,7 @@ class RouteSelectionUITests(unittest.TestCase):
         app.show_trains(route.id)
 
         app._header.assert_called_once_with("Linie 7 · ⚠ Baustelle", "Linien")
+        app.controller.select_route.assert_called_once_with(route.id)
 
 
 class TrainInfoTests(unittest.TestCase):

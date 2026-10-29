@@ -213,6 +213,164 @@
           "de:08311:30300"
         ]
       }
+    },
+    {
+      "id": 1,
+      "name": "Linie 2",
+      "color": [
+        19,
+        165,
+        56
+      ],
+      "start_of_route": 134,
+      "led_layout": [
+        13,
+        4,
+        9,
+        4,
+        14,
+        9,
+        14,
+        8,
+        8,
+        7,
+        5,
+        5,
+        4,
+        4,
+        4,
+        4,
+        4,
+        3,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Hornusstraße",
+          "position": 134,
+          "trias_ref": "de:08311:30200"
+        },
+        {
+          "id": 1,
+          "name": "Eugen-Martin-Straße",
+          "position": 147,
+          "trias_ref": "de:08311:30137"
+        },
+        {
+          "id": 2,
+          "name": "Zollhallenplatz",
+          "position": 151,
+          "trias_ref": "de:08311:30136"
+        },
+        {
+          "id": 3,
+          "name": "Hauptfriedhof",
+          "position": 160,
+          "trias_ref": "de:08311:30205"
+        },
+        {
+          "id": 4,
+          "name": "Friedrich-Ebert-Platz",
+          "position": 164,
+          "trias_ref": "de:08311:30811"
+        },
+        {
+          "id": 5,
+          "name": "Robert-Koch-Straße",
+          "position": 178,
+          "trias_ref": "de:08311:30810"
+        },
+        {
+          "id": 6,
+          "name": "Rathaus im Stühlinger",
+          "position": 187,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 7,
+          "name": "Eschholzstraße",
+          "position": 201,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 8,
+          "name": "Hauptbahnhof",
+          "position": 209,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 9,
+          "name": "Stadttheater",
+          "position": 217,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 10,
+          "name": "Bertoldsbrunnen",
+          "position": 224,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 11,
+          "name": "Holzmarkt",
+          "position": 229,
+          "trias_ref": "de:08311:30103"
+        },
+        {
+          "id": 12,
+          "name": "Johanneskirche",
+          "position": 234,
+          "trias_ref": "de:08311:30104"
+        },
+        {
+          "id": 13,
+          "name": "Lorettostraße",
+          "position": 238,
+          "trias_ref": "de:08311:30405"
+        },
+        {
+          "id": 14,
+          "name": "Holbeinstraße",
+          "position": 242,
+          "trias_ref": "de:08311:30404"
+        },
+        {
+          "id": 15,
+          "name": "Wonnhalde",
+          "position": 246,
+          "trias_ref": "de:08311:30403"
+        },
+        {
+          "id": 16,
+          "name": "Wiesenweg",
+          "position": 250,
+          "trias_ref": "de:08311:30402"
+        },
+        {
+          "id": 17,
+          "name": "Klosterplatz",
+          "position": 254,
+          "trias_ref": "de:08311:30401"
+        },
+        {
+          "id": 18,
+          "name": "Dorfstraße",
+          "position": 257,
+          "trias_ref": "de:08311:30400"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11002:I:H",
+          "frb:11002:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30200",
+          "de:08311:30400"
+        ]
+      }
     }
   ],
   "trias": {

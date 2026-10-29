@@ -545,15 +545,15 @@ class Controller():
     tickinterval: int = 100 # in ms | Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
-    trip_source: Callable[
-        [datetime], dict[int, list[Trip] | RouteLiveData]
-    ] | None = None # liefert live {route_id: [Trip]}, darf werfen
+    trip_source: Callable[..., dict[int, list[Trip] | RouteLiveData]] | None = None
     live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
     stopped: bool = True
     selected_train: tuple[int, str | int] | None = None
     selected_direction: tuple[int, int] | None = None
+    selected_route_id: int | None = None
+    route_selection_required: bool = False
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -563,6 +563,35 @@ class Controller():
         self._live_thread = None
         self.selected_train = None
         self.selected_direction = None
+        self.selected_route_id = None
+        self.route_selection_required = False
+        self._selection_lock = threading.Lock()
+        self._selection_generation = 0
+        self._selection_changed = threading.Event()
+
+    def require_route_selection(self):
+        """Enable route-gated rendering and live polling for the touchscreen UI."""
+        self.route_selection_required = True
+        self.select_route(None)
+
+    def select_route(self, route_id: int | None):
+        """Set the active route, invalidating pending live responses on changes."""
+        if route_id is not None and not any(
+            route.id == route_id for route in self.routes
+        ):
+            raise ValueError(f"Unknown route selected: {route_id}")
+        with self._selection_lock:
+            if self.selected_route_id == route_id:
+                return
+            self.selected_route_id = route_id
+            self._selection_generation += 1
+        self._selection_changed.set()
+        if self.route_selection_required and self.trip_source is not None:
+            now = datetime.now(timezone.utc)
+            minute_value = round(60000 / self.tickinterval)
+            for route in self.routes:
+                route.set_trips([], now, minute_value)
+                route.connections = []
 
     def select_train(self, route_id: int | None, train_id: str | int | None = None):
         """Limit rendering to one train; a missing selection clears that limit."""
@@ -597,6 +626,8 @@ class Controller():
         return (self.ticks // ticks_per_blink) % 2 == 0
 
     def draw(self, route: Route):
+        if self.route_selection_required and route.id != self.selected_route_id:
+            return
         now = datetime.now(timezone.utc)
         blink_on = self.is_blink_on()
         # Zuege ohne laufenden Umlauf (live: vor Start / nach Ende) nicht zeichnen
@@ -719,47 +750,92 @@ class Controller():
         if trip_source is None:
             return
         while not self.stopped:
+            selected_route_id = None
+            selection_generation = None
+            if self.route_selection_required:
+                self._selection_changed.clear()
+                with self._selection_lock:
+                    selected_route_id = self.selected_route_id
+                    selection_generation = self._selection_generation
+                if selected_route_id is None:
+                    self._selection_changed.wait(timeout=0.1)
+                    continue
             try:
-                snapshot = trip_source(datetime.now(timezone.utc))
+                now = datetime.now(timezone.utc)
+                if self.route_selection_required:
+                    snapshot = trip_source(now, selected_route_id)
+                else:
+                    snapshot = trip_source(now)
                 if snapshot is not None:
-                    self._live_queue.put(snapshot)
+                    if self.route_selection_required:
+                        with self._selection_lock:
+                            if (
+                                self.selected_route_id == selected_route_id
+                                and self._selection_generation == selection_generation
+                            ):
+                                self._live_queue.put(
+                                    (selection_generation, snapshot)
+                                )
+                    else:
+                        self._live_queue.put(snapshot)
             except Exception:
                 # Fehler beim Abruf: alte Zuege bleiben einfach stehen
                 logger.exception("Live-Fahrplandaten konnten nicht geladen werden")
-            waited = 0.0
-            step = 0.05
-            while not self.stopped and waited < self.live_refresh_seconds:
-                time.sleep(min(step, self.live_refresh_seconds - waited))
-                waited += step
+            self._selection_changed.wait(timeout=self.live_refresh_seconds)
 
     def _drain_live_queue(self, minute_value: int) -> None:
         """Wendet die zuletzt eingetroffenen Live-Umlaeufe an (ohne zu blockieren)."""
         now = datetime.now(timezone.utc)
         while True:
             try:
-                snapshot = self._live_queue.get_nowait()
+                queued_snapshot = self._live_queue.get_nowait()
             except queue.Empty:
                 return
+            if self.route_selection_required:
+                if (
+                    not isinstance(queued_snapshot, tuple)
+                    or len(queued_snapshot) != 2
+                ):
+                    logger.warning("Unerwartete Live-Daten ohne Auswahlversion ignoriert")
+                    continue
+                generation, snapshot = queued_snapshot
+                with self._selection_lock:
+                    if (
+                        generation != self._selection_generation
+                        or self.selected_route_id is None
+                    ):
+                        continue
+            else:
+                snapshot = queued_snapshot
             if not isinstance(snapshot, dict):
                 logger.warning("Unerwartete Live-Daten vom Typ %s ignoriert", type(snapshot))
                 continue
             for route in self.routes:
-                route_data = snapshot.get(route.id)
-                if route_data is None:
-                    continue
-                previous_states = self._capture_arrival_states(route)
-                try:
-                    if isinstance(route_data, RouteLiveData):
-                        trips = route_data.trips
-                        connections = route_data.connections
-                    else:
-                        trips = list(route_data)
-                        connections = []
-                    route.set_trips(list(trips), now, minute_value)
-                    route.connections = list(connections)
-                    self._log_arrival_transitions(route, previous_states)
-                except Exception:
-                    logger.exception("Live-Umlaeufe fuer Route %s konnten nicht angewendet werden", route.id)
+                with self._selection_lock:
+                    if self.route_selection_required and (
+                        route.id != self.selected_route_id
+                        or generation != self._selection_generation
+                    ):
+                        continue
+                    route_data = snapshot.get(route.id)
+                    if route_data is None:
+                        continue
+                    previous_states = self._capture_arrival_states(route)
+                    try:
+                        if isinstance(route_data, RouteLiveData):
+                            trips = route_data.trips
+                            connections = route_data.connections
+                        else:
+                            trips = list(route_data)
+                            connections = []
+                        route.set_trips(list(trips), now, minute_value)
+                        route.connections = list(connections)
+                        self._log_arrival_transitions(route, previous_states)
+                    except Exception:
+                        logger.exception(
+                            "Live-Umlaeufe fuer Route %s konnten nicht angewendet werden",
+                            route.id,
+                        )
 
     def start(self):
         self.stopped = False
@@ -767,6 +843,8 @@ class Controller():
         for route in self.routes:
             for train in route.trains:
                 train.minute_value = minute_value
+        self.reset_strip()
+        self.strip.show()
         if self.trip_source is not None:
             self._live_thread = threading.Thread(
                 target=self._live_worker,
@@ -785,6 +863,11 @@ class Controller():
                 self.sync_trains(log_arrivals=True)
             self.reset_strip()
             for route in self.routes:
+                if (
+                    self.route_selection_required
+                    and route.id != self.selected_route_id
+                ):
+                    continue
                 self._move_trains(route)
                 self.draw(route)
             self.strip.show()
@@ -792,6 +875,7 @@ class Controller():
 
     def stop(self):
         self.stopped = True
+        self._selection_changed.set()
 
 
 # Kontroller move requests (intervall mäßig) und der Zug macht die Valedierungen jeh nach dem ob er sich bewegen darf anhand der ausgerechneten 

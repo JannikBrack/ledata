@@ -295,6 +295,76 @@ class CyclicRegressionTests(unittest.TestCase):
 
 
 class ControllerLiveTests(unittest.TestCase):
+    def test_ui_selection_waits_for_a_route_and_stops_fetching_when_deselected(self):
+        route = make_route()
+        controller = Controller([route], FakeStrip(15))
+        controller.require_route_selection()
+        controller.live_refresh_seconds = 1.0
+        requested_routes = []
+        request_received = threading.Event()
+
+        def source(_moment, route_id):
+            requested_routes.append(route_id)
+            request_received.set()
+            return {route_id: []}
+
+        controller.trip_source = source
+        controller.stopped = False
+        worker = threading.Thread(target=controller._live_worker, daemon=True)
+        worker.start()
+        time.sleep(0.1)
+        self.assertEqual(requested_routes, [])
+
+        controller.select_route(route.id)
+        self.assertTrue(request_received.wait(timeout=1.0))
+        controller.select_route(None)
+        request_count = len(requested_routes)
+        time.sleep(0.1)
+        controller.stop()
+        worker.join(timeout=1.0)
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(requested_routes, [route.id])
+        self.assertEqual(len(requested_routes), request_count)
+
+    def test_ui_route_selection_only_draws_the_selected_route(self):
+        first_route = make_route()
+        second_route = make_route()
+        second_route.id = 1
+        for station in second_route.stations:
+            station.position += 1
+        strip = FakeStrip(15)
+        controller = Controller([first_route, second_route], strip)
+        controller.require_route_selection()
+
+        controller.reset_strip()
+        controller.draw(first_route)
+        controller.draw(second_route)
+        self.assertEqual([strip.getPixelColor(i) for i in range(15)], [0] * 15)
+
+        controller.select_route(first_route.id)
+        controller.reset_strip()
+        controller.draw(first_route)
+        controller.draw(second_route)
+        self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(5), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(10), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(1), 0)
+        self.assertEqual(strip.getPixelColor(6), 0)
+        self.assertEqual(strip.getPixelColor(11), 0)
+
+        controller.select_route(second_route.id)
+        controller.reset_strip()
+        controller.draw(first_route)
+        controller.draw(second_route)
+
+        self.assertEqual(strip.getPixelColor(1), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(6), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(11), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(0), 0)
+        self.assertEqual(strip.getPixelColor(5), 0)
+        self.assertEqual(strip.getPixelColor(10), 0)
+
     def test_controller_fills_trains_from_trip_source(self):
         route = make_route()
         strip = FakeStrip(15)

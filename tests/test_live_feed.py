@@ -1,5 +1,6 @@
 """Unit tests for live_feed.py (no network access)."""
 
+import json
 import os
 import sys
 import tempfile
@@ -208,6 +209,18 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 2)
         for _, _, dep_arr_time, _ in client.calls:
             self.assertEqual(dep_arr_time, now - timedelta(minutes=45))
+
+    def test_fetch_can_be_limited_to_one_route(self):
+        other_route = {**self.route, "id": 8}
+        client = FakeClient(MOOS)
+        feed = LiveFeed(client, [self.route, other_route])
+        parsed = parse_stop_events(MOOS, STATION_REFS)
+        now = self._median_midpoint(parsed)
+
+        result = feed.fetch(now, route_id=7)
+
+        self.assertEqual(set(result), {7})
+        self.assertEqual(len(client.calls), 2)
 
     def test_fetch_merges_duplicate_journey_refs(self):
         parsed = parse_stop_events(MOOS, STATION_REFS)
@@ -457,6 +470,88 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(
             [call.station_id for call in connections[0].second_calls],
             [13, 21],
+        )
+
+
+class RouteConfigTests(unittest.TestCase):
+    def test_line_two_has_ordered_live_stops_and_matching_led_positions(self):
+        meta = json.loads(
+            (Path(__file__).resolve().parents[1] / "meta.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        route = next(route for route in meta["routes"] if route["id"] == 1)
+
+        self.assertEqual(
+            [station["name"] for station in route["stations"]],
+            [
+                "Hornusstraße",
+                "Eugen-Martin-Straße",
+                "Zollhallenplatz",
+                "Hauptfriedhof",
+                "Friedrich-Ebert-Platz",
+                "Robert-Koch-Straße",
+                "Rathaus im Stühlinger",
+                "Eschholzstraße",
+                "Hauptbahnhof",
+                "Stadttheater",
+                "Bertoldsbrunnen",
+                "Holzmarkt",
+                "Johanneskirche",
+                "Lorettostraße",
+                "Holbeinstraße",
+                "Wonnhalde",
+                "Wiesenweg",
+                "Klosterplatz",
+                "Dorfstraße",
+            ],
+        )
+        self.assertEqual(
+            route["led_layout"],
+            [13, 4, 9, 4, 14, 9, 14, 8, 8, 7, 5, 5, 4, 4, 4, 4, 4, 3, 1],
+        )
+        self.assertEqual(len(route["stations"]), len(route["led_layout"]))
+        self.assertEqual(route["start_of_route"], 134)
+        self.assertEqual(
+            [station["position"] for station in route["stations"]],
+            [
+                134,
+                147,
+                151,
+                160,
+                164,
+                178,
+                187,
+                201,
+                209,
+                217,
+                224,
+                229,
+                234,
+                238,
+                242,
+                246,
+                250,
+                254,
+                257,
+            ],
+        )
+        self.assertEqual(
+            [station["position"] for station in route["stations"]],
+            [
+                route["start_of_route"]
+                + sum(route["led_layout"][:index])
+                for index in range(len(route["stations"]))
+            ],
+        )
+        self.assertEqual(route["color"], [19, 165, 56])
+        self.assertEqual(
+            route["trias"]["line_refs"],
+            ["frb:11002:I:H", "frb:11002:I:R"],
+        )
+        self.assertEqual(
+            route["trias"]["origin_refs"],
+            ["de:08311:30200", "de:08311:30400"],
         )
 
 
