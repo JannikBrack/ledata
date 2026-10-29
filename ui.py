@@ -583,7 +583,12 @@ class TramUI:
         self.screen = "trains"
         self.direction_id = None
         self._clear()
-        self._header(self.route.name, "Linien")
+        route_title = (
+            f"{self.route.name} · ⚠ Baustelle"
+            if self.route.closed_section
+            else self.route.name
+        )
+        self._header(route_title, "Linien")
 
         tk = self.tk
         ttk = self.ttk

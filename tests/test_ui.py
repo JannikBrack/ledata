@@ -88,6 +88,25 @@ class RouteSelectionUITests(unittest.TestCase):
         ]
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
 
+    def test_train_plan_header_shows_closure_next_to_route_name(self):
+        route = make_route()
+        route.closed_section = (1, 2)
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [route]
+        app.root = MagicMock()
+        app.tk = MagicMock()
+        app.ttk = MagicMock()
+        app._clear = MagicMock()
+        app._header = MagicMock()
+        app._update_filter_buttons = MagicMock()
+        app._build_train_table = MagicMock()
+        app._refresh_train_rows = MagicMock()
+
+        app.show_trains(route.id)
+
+        app._header.assert_called_once_with("Linie 7 · ⚠ Baustelle", "Linien")
+
 
 class TrainInfoTests(unittest.TestCase):
     def test_summary_includes_route_names_times_position_and_direction(self):
