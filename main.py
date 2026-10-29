@@ -120,6 +120,8 @@ def journeys_to_connections(connections):
             transfer_arrival=connection.transfer_arrival,
             transfer_departure=connection.transfer_departure,
             delay_seconds=connection.delay_seconds,
+            first_trip_id=connection.first_journey_ref,
+            second_trip_id=connection.second_journey_ref,
         )
         for connection in connections
     ]

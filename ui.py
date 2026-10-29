@@ -28,8 +28,68 @@ class TrainInfo:
     direction_destination: str
 
 
+@dataclass(frozen=True)
+class StopTimelineEntry:
+    name: str
+    arrival: datetime | None
+    is_closure: bool = False
+
+
 def _station_name(route: Route, station_id: int) -> str:
     return route.station_names.get(station_id, str(station_id))
+
+
+def train_stop_timeline(route: Route, train: Train) -> list[StopTimelineEntry]:
+    offset = train.cycle_offset if train.trip.cyclic else timedelta(0)
+    return [
+        StopTimelineEntry(
+            _station_name(route, stop.station_id),
+            train.trip.arrival_at(index) + offset,
+        )
+        for index, stop in enumerate(train.trip.stops)
+    ]
+
+
+def connection_stop_timeline(
+    route: Route,
+    connection: RouteConnection,
+) -> list[StopTimelineEntry]:
+    trips = {trip.id: trip for trip in route.trips}
+    first_trip = trips.get(connection.first_trip_id)
+    second_trip = trips.get(connection.second_trip_id)
+    if (
+        first_trip is None
+        or second_trip is None
+        or not first_trip.stops
+        or not second_trip.stops
+    ):
+        return []
+    if (
+        first_trip.stops[-1].station_id != connection.first_boundary_station_id
+        or second_trip.stops[0].station_id != connection.second_boundary_station_id
+    ):
+        return []
+
+    entries = [
+        StopTimelineEntry(_station_name(route, stop.station_id), stop.arrival)
+        for stop in first_trip.stops
+    ]
+    entries.append(
+        StopTimelineEntry(
+            (
+                f"Baustelle: "
+                f"{_station_name(route, connection.first_boundary_station_id)}"
+                f" → {_station_name(route, connection.second_boundary_station_id)}"
+            ),
+            None,
+            is_closure=True,
+        )
+    )
+    entries.extend(
+        StopTimelineEntry(_station_name(route, stop.station_id), stop.arrival)
+        for stop in second_trip.stops
+    )
+    return entries
 
 
 def direction_destination_id(route: Route, train: Train) -> int:
@@ -135,6 +195,7 @@ class TramUI:
         self._detail_train_id: str | int | None = None
         self._detail_connection_id: str | None = None
         self._detail_labels = {}
+        self._detail_stop_tree = None
 
         self.root.title("Straßenbahn-Anzeige")
         self.root.attributes("-fullscreen", True)
@@ -631,20 +692,7 @@ class TramUI:
         self.screen = "detail"
         self._clear()
         self._header(f"{self.route.name} · Bahn {train_id}", "Bahnauswahl")
-        content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
-        content.pack(fill="both", expand=True)
-        self._detail_labels = {}
-        for key in ("journey", "times", "delay", "position", "direction"):
-            label = self.tk.Label(
-                content,
-                background="#f3f5f7",
-                font=("TkDefaultFont", 20 if key in ("delay", "position") else 17),
-                anchor="w",
-                justify="left",
-                wraplength=740,
-            )
-            label.pack(fill="x", pady=8)
-            self._detail_labels[key] = label
+        self._build_detail_content()
         self._refresh_detail()
 
     def show_connection_detail(self, connection: RouteConnection):
@@ -658,6 +706,10 @@ class TramUI:
         destination = _station_name(self.route, connection.destination_station_id)
         self._clear()
         self._header(f"{self.route.name} · {origin} → {destination}", "Bahnauswahl")
+        self._build_detail_content()
+        self._refresh_detail()
+
+    def _build_detail_content(self):
         content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
         content.pack(fill="both", expand=True)
         self._detail_labels = {}
@@ -670,9 +722,101 @@ class TramUI:
                 justify="left",
                 wraplength=740,
             )
-            label.pack(fill="x", pady=8)
+            label.pack(fill="x", pady=4)
             self._detail_labels[key] = label
-        self._refresh_detail()
+
+        stops_frame = self.tk.Frame(content, background="#f3f5f7")
+        stops_frame.pack(fill="both", expand=True, pady=(4, 0))
+        self.tk.Label(
+            stops_frame,
+            text="Haltestellen · Ankunft",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 15, "bold"),
+            anchor="w",
+        ).pack(fill="x", pady=(0, 3))
+        self._detail_stop_tree = self.ttk.Treeview(
+            stops_frame,
+            columns=("station", "arrival"),
+            show="headings",
+            selectmode="none",
+            style="Detail.Treeview",
+        )
+        self._detail_stop_tree.heading("station", text="Haltestelle", anchor="w")
+        self._detail_stop_tree.heading("arrival", text="Ankunft", anchor="center")
+        self._detail_stop_tree.column("station", anchor="w", stretch=True)
+        self._detail_stop_tree.column(
+            "arrival",
+            width=140,
+            anchor="center",
+            stretch=False,
+        )
+        style = self.ttk.Style()
+        style.configure(
+            "Detail.Treeview",
+            rowheight=36,
+            font=("TkDefaultFont", 14),
+            background="#ffffff",
+            fieldbackground="#ffffff",
+            foreground="#263238",
+        )
+        style.configure("Detail.Treeview.Heading", font=("TkDefaultFont", 13, "bold"))
+        self._detail_stop_tree.tag_configure("row_even", background="#ffffff")
+        self._detail_stop_tree.tag_configure("row_odd", background="#eaf1f6")
+        self._detail_stop_tree.tag_configure(
+            "closure",
+            background="#fff0d6",
+            foreground="#985400",
+        )
+        self._detail_stop_tree.tag_configure(
+            "unavailable",
+            background="#ffffff",
+            foreground="#59636e",
+        )
+        scrollbar = self.ttk.Scrollbar(
+            stops_frame,
+            orient="vertical",
+            command=self._detail_stop_tree.yview,
+        )
+        self._detail_stop_tree.configure(yscrollcommand=scrollbar.set)
+        self._detail_stop_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def _refresh_detail_stop_table(self, entries: list[StopTimelineEntry]):
+        if self._detail_stop_tree is None:
+            return
+        if not entries:
+            rows = [("Haltestellen aktuell nicht verfügbar.", "", "unavailable")]
+        else:
+            rows = [
+                (
+                    entry.name,
+                    self._format_time(entry.arrival) if entry.arrival else "",
+                    (
+                        "closure"
+                        if entry.is_closure
+                        else "row_even" if index % 2 == 0 else "row_odd"
+                    ),
+                )
+                for index, entry in enumerate(entries)
+            ]
+
+        existing = self._detail_stop_tree.get_children()
+        for index, (name, arrival, tag) in enumerate(rows):
+            item_id = f"stop-{index}"
+            values = (name, arrival)
+            tags = (tag,)
+            if item_id in existing:
+                self._detail_stop_tree.item(item_id, values=values, tags=tags)
+            else:
+                self._detail_stop_tree.insert(
+                    "",
+                    index,
+                    iid=item_id,
+                    values=values,
+                    tags=tags,
+                )
+        for item_id in existing[len(rows):]:
+            self._detail_stop_tree.delete(item_id)
 
     @staticmethod
     def _format_time(value: datetime) -> str:
@@ -701,6 +845,7 @@ class TramUI:
             if connection is None:
                 for label in self._detail_labels.values():
                     label.configure(text="Verbindung aktuell nicht verfügbar.")
+                self._refresh_detail_stop_table([])
                 return
             origin = _station_name(self.route, connection.origin_station_id)
             destination = _station_name(
@@ -740,6 +885,9 @@ class TramUI:
             self._detail_labels["direction"].configure(
                 text=f"Fahrtrichtung: {destination}"
             )
+            self._refresh_detail_stop_table(
+                connection_stop_timeline(self.route, connection)
+            )
             return
 
         train = next(
@@ -749,6 +897,7 @@ class TramUI:
         if train is None:
             for label in self._detail_labels.values():
                 label.configure(text="Bahn aktuell nicht verfügbar.")
+            self._refresh_detail_stop_table([])
             return
         info = train_info(self.route, train)
         self._detail_labels["journey"].configure(
@@ -768,6 +917,7 @@ class TramUI:
         self._detail_labels["direction"].configure(
             text=f"Fahrtrichtung: {info.direction_destination}"
         )
+        self._refresh_detail_stop_table(train_stop_timeline(self.route, train))
 
     def go_back(self):
         if self.screen == "detail" and self.route is not None:

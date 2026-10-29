@@ -218,6 +218,8 @@ class RouteConnection:
     transfer_arrival: datetime
     transfer_departure: datetime
     delay_seconds: float
+    first_trip_id: str | int | None = None
+    second_trip_id: str | int | None = None
 
 
 @dataclass

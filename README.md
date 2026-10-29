@@ -40,7 +40,10 @@ pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge
 zeigen mit „Tippen: Details →“ ihre Auswahlfunktion.
 Die Detailansicht ergänzt die aktuelle Position; während sie geöffnet ist,
 zeigt der LED-Streifen nur die ausgewählte Bahn. Zeiten werden in der lokalen
-Zeitzone des Raspberry Pi angezeigt.
+Zeitzone des Raspberry Pi angezeigt. Zusätzlich listet sie alle angefahrenen
+Haltestellen in Fahrtrichtung mit der jeweiligen Ankunftszeit. Bei einer
+Baustellen-Verbindung stehen die Halte beider Teilfahrten in der Liste; der
+Baustellenabschnitt erscheint zwischen seinen beiden Sperrgrenzen.
 
 Mit `--terminal` bleibt der bisherige Terminalbetrieb verfügbar. Auf anderen
 Systemen kann die grafische Oberfläche mit `--ui` explizit gestartet werden,

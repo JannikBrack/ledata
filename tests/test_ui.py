@@ -7,13 +7,16 @@ from unittest.mock import MagicMock
 
 from classes import Controller, Route, RouteConnection, Train, Trip, Stop
 from led_backend import FakeStrip
-from live_feed import LiveCall, LiveJourney
-from main import journeys_to_trips
+from live_feed import LiveCall, LiveConnection, LiveJourney
+from main import journeys_to_connections, journeys_to_trips
 from ui import (
+    StopTimelineEntry,
     TramUI,
+    connection_stop_timeline,
     filter_connections,
     filter_trains,
     route_direction_destination_ids,
+    train_stop_timeline,
     train_info,
     walking_connection_instruction,
 )
@@ -75,6 +78,19 @@ class TrainInfoTests(unittest.TestCase):
         self.assertEqual(info.arrival, START + timedelta(seconds=140))
         self.assertEqual(info.position, "Zwischen Moosweiher und Diakoniekrankenhaus")
         self.assertEqual(info.direction_destination, "Moosgrund")
+
+    def test_stop_timeline_shows_all_stops_in_trip_direction_with_arrival_times(self):
+        train = make_train("journey-1", direction=-1)
+        route = make_route([train])
+
+        self.assertEqual(
+            train_stop_timeline(route, train),
+            [
+                StopTimelineEntry("Moosgrund", START),
+                StopTimelineEntry("Diakoniekrankenhaus", START + timedelta(seconds=70)),
+                StopTimelineEntry("Moosweiher", START + timedelta(seconds=140)),
+            ],
+        )
 
     def test_summary_uses_cumulative_schedule_delay_at_current_stop(self):
         train = make_train("journey-1")
@@ -240,6 +256,184 @@ class TrainTableLayoutTests(unittest.TestCase):
             "closure",
             text="",
             anchor="center",
+        )
+
+    def test_detail_stop_table_renders_arrivals_and_closure_between_legs(self):
+        app = TramUI.__new__(TramUI)
+        app._detail_stop_tree = MagicMock()
+        app._detail_stop_tree.get_children.return_value = []
+
+        app._refresh_detail_stop_table(
+            [
+                StopTimelineEntry("Diakoniekrankenhaus", START),
+                StopTimelineEntry(
+                    "Baustelle: Diakoniekrankenhaus → Moosgrund",
+                    None,
+                    is_closure=True,
+                ),
+                StopTimelineEntry("Moosgrund", START + timedelta(minutes=10)),
+            ]
+        )
+
+        rows = [call.kwargs for call in app._detail_stop_tree.insert.call_args_list]
+        self.assertEqual(
+            [row["values"] for row in rows],
+            [
+                ("Diakoniekrankenhaus", TramUI._format_time(START)),
+                ("Baustelle: Diakoniekrankenhaus → Moosgrund", ""),
+                ("Moosgrund", TramUI._format_time(START + timedelta(minutes=10))),
+            ],
+        )
+        self.assertEqual(rows[1]["tags"], ("closure",))
+
+    def test_journeys_to_connections_keeps_component_trip_ids(self):
+        source = LiveConnection(
+            id="first|second",
+            origin_station_id=0,
+            destination_station_id=3,
+            first_boundary_station_id=1,
+            second_boundary_station_id=2,
+            departure=START,
+            arrival=START + timedelta(minutes=15),
+            transfer_arrival=START + timedelta(minutes=5),
+            transfer_departure=START + timedelta(minutes=10),
+            delay_seconds=0,
+            first_journey_ref="first",
+            second_journey_ref="second",
+        )
+
+        connection = journeys_to_connections([source])[0]
+
+        self.assertEqual(connection.first_trip_id, "first")
+        self.assertEqual(connection.second_trip_id, "second")
+
+    def test_connection_stop_timeline_inserts_closure_between_actual_legs(self):
+        route = Route(
+            7,
+            [5, 5, 5, 5],
+            [],
+            (255, 0, 0),
+            0,
+            station_names={
+                0: "Moosweiher",
+                1: "Diakoniekrankenhaus",
+                2: "Moosgrund",
+                3: "Paduaallee",
+            },
+        )
+        first_trip = Trip(
+            "first-leg",
+            "first-leg",
+            [
+                Stop(0, START, START),
+                Stop(1, START + timedelta(minutes=5), START + timedelta(minutes=5)),
+            ],
+            cyclic=False,
+        )
+        second_trip = Trip(
+            "second-leg",
+            "second-leg",
+            [
+                Stop(2, START + timedelta(minutes=10), START + timedelta(minutes=10)),
+                Stop(3, START + timedelta(minutes=15), START + timedelta(minutes=15)),
+            ],
+            cyclic=False,
+        )
+        route.trips = [first_trip, second_trip]
+        connection = RouteConnection(
+            id="connection",
+            origin_station_id=0,
+            destination_station_id=3,
+            first_boundary_station_id=1,
+            second_boundary_station_id=2,
+            departure=START,
+            arrival=START + timedelta(minutes=15),
+            transfer_arrival=START + timedelta(minutes=5),
+            transfer_departure=START + timedelta(minutes=10),
+            delay_seconds=0,
+            first_trip_id="first-leg",
+            second_trip_id="second-leg",
+        )
+
+        self.assertEqual(
+            connection_stop_timeline(route, connection),
+            [
+                StopTimelineEntry("Moosweiher", START),
+                StopTimelineEntry("Diakoniekrankenhaus", START + timedelta(minutes=5)),
+                StopTimelineEntry(
+                    "Baustelle: Diakoniekrankenhaus → Moosgrund",
+                    None,
+                    is_closure=True,
+                ),
+                StopTimelineEntry("Moosgrund", START + timedelta(minutes=10)),
+                StopTimelineEntry("Paduaallee", START + timedelta(minutes=15)),
+            ],
+        )
+
+    def test_connection_stop_timeline_reverses_closure_boundaries_with_direction(self):
+        route = Route(
+            7,
+            [5, 5, 5, 5],
+            [],
+            (255, 0, 0),
+            0,
+            station_names={
+                0: "Moosweiher",
+                1: "Diakoniekrankenhaus",
+                2: "Moosgrund",
+                3: "Paduaallee",
+            },
+        )
+        first_trip = Trip(
+            "first-leg",
+            "first-leg",
+            [
+                Stop(3, START, START),
+                Stop(2, START + timedelta(minutes=5), START + timedelta(minutes=5)),
+            ],
+            cyclic=False,
+        )
+        second_trip = Trip(
+            "second-leg",
+            "second-leg",
+            [
+                Stop(1, START + timedelta(minutes=10), START + timedelta(minutes=10)),
+                Stop(0, START + timedelta(minutes=15), START + timedelta(minutes=15)),
+            ],
+            cyclic=False,
+        )
+        route.trips = [first_trip, second_trip]
+        connection = RouteConnection(
+            id="connection-reverse",
+            origin_station_id=3,
+            destination_station_id=0,
+            first_boundary_station_id=2,
+            second_boundary_station_id=1,
+            departure=START,
+            arrival=START + timedelta(minutes=15),
+            transfer_arrival=START + timedelta(minutes=5),
+            transfer_departure=START + timedelta(minutes=10),
+            delay_seconds=0,
+            first_trip_id="first-leg",
+            second_trip_id="second-leg",
+        )
+
+        self.assertEqual(
+            connection_stop_timeline(route, connection),
+            [
+                StopTimelineEntry("Paduaallee", START),
+                StopTimelineEntry("Moosgrund", START + timedelta(minutes=5)),
+                StopTimelineEntry(
+                    "Baustelle: Moosgrund → Diakoniekrankenhaus",
+                    None,
+                    is_closure=True,
+                ),
+                StopTimelineEntry(
+                    "Diakoniekrankenhaus",
+                    START + timedelta(minutes=10),
+                ),
+                StopTimelineEntry("Moosweiher", START + timedelta(minutes=15)),
+            ],
         )
 
     def test_connection_rows_leave_warning_in_heading_not_row(self):
