@@ -83,7 +83,6 @@ class RouteSelectionUITests(unittest.TestCase):
 
         app.show_routes()
 
-        app.controller.select_route.assert_called_once_with(None)
         button_labels = [
             call.kwargs["text"] for call in app.tk.Button.call_args_list
         ]
@@ -106,7 +105,6 @@ class RouteSelectionUITests(unittest.TestCase):
 
         app.show_trains(route.id)
 
-        app.controller.select_route.assert_called_once_with(route.id)
         app._header.assert_called_once_with("Linie 7 · ⚠ Baustelle", "Linien")
 
 
@@ -805,35 +803,6 @@ class DirectionFilterUITests(unittest.TestCase):
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
-    def test_selected_route_hides_other_trains_but_keeps_all_stations(self):
-        selected_train = make_train("selected-route-train", cyclic=True)
-        selected_train.position = 2
-        other_route_train = make_train("other-route-train", cyclic=True)
-        other_route_train.position = 9
-        selected_route = make_route([selected_train])
-        other_route = Route(
-            8,
-            [3, 4, 8],
-            [other_route_train],
-            (0, 0, 255),
-            0,
-            station_names={0: "A", 1: "B", 2: "C"},
-            name="Linie 8",
-        )
-        strip = FakeStrip(15)
-        controller = Controller([selected_route, other_route], strip)
-        controller.select_route(selected_route.id)
-
-        controller.reset_strip()
-        for route in controller.routes:
-            controller.draw(route)
-
-        self.assertEqual(strip.getPixelColor(2), 0xFF0000)
-        self.assertEqual(strip.getPixelColor(9), 0)
-        self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
-        self.assertEqual(strip.getPixelColor(3), 0xFFFFFF)
-        self.assertEqual(strip.getPixelColor(7), 0xFFFFFF)
-
     def test_direction_selection_only_renders_trains_heading_to_selected_endpoint(self):
         outbound = make_train("outbound", direction=1, cyclic=True)
         inbound = make_train("inbound", direction=-1, cyclic=True)

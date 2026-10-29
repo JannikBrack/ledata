@@ -373,7 +373,8 @@ class TramUI:
         ).pack(side="right")
 
     def show_routes(self):
-        self.controller.select_route(None)
+        self.controller.select_train(None)
+        self.controller.select_direction(None, None)
         self.route = None
         self.screen = "routes"
         self._clear()
@@ -577,7 +578,8 @@ class TramUI:
 
     def show_trains(self, route_id: int):
         self.route = next(route for route in self.routes if route.id == route_id)
-        self.controller.select_route(route_id)
+        self.controller.select_train(None)
+        self.controller.select_direction(None, None)
         self.screen = "trains"
         self.direction_id = None
         self._clear()

@@ -554,7 +554,6 @@ class Controller():
     stopped: bool = True
     selected_train: tuple[int, str | int] | None = None
     selected_direction: tuple[int, int] | None = None
-    selected_route_id: int | None = None
 
     def __init__(self, routes, strip) -> None:
         self.routes = routes
@@ -562,13 +561,6 @@ class Controller():
         self.ticks = 0
         self._live_queue = queue.Queue()
         self._live_thread = None
-        self.selected_train = None
-        self.selected_direction = None
-        self.selected_route_id = None
-
-    def select_route(self, route_id: int | None):
-        """Limit rendering to one route while keeping every route's stations visible."""
-        self.selected_route_id = route_id
         self.selected_train = None
         self.selected_direction = None
 
@@ -580,7 +572,6 @@ class Controller():
             else None
         )
         if self.selected_train is not None:
-            self.selected_route_id = route_id
             self.selected_direction = None
 
     def select_direction(self, route_id: int | None, destination_id: int | None):
@@ -591,7 +582,6 @@ class Controller():
             if route_id is not None and destination_id is not None
             else None
         )
-        self.selected_route_id = route_id
 
     def __str__(self) -> str:
         return (
@@ -611,9 +601,7 @@ class Controller():
         blink_on = self.is_blink_on()
         # Zuege ohne laufenden Umlauf (live: vor Start / nach Ende) nicht zeichnen
         active_trains = [train for train in route.trains if train.trip.is_active(now)]
-        if self.selected_route_id is not None and route.id != self.selected_route_id:
-            active_trains = []
-        elif self.selected_train is not None:
+        if self.selected_train is not None:
             selected_route_id, selected_train_id = self.selected_train
             if route.id == selected_route_id:
                 active_trains = [
