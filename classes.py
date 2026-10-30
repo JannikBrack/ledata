@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from led_backend import PixelStrip, Color
+from route_selection_simulation import RouteSelectionSimulation
 
 # Schrittweises Debug-Logging beim Bewegen (auf dem Pi sonst sehr laut)
 DEBUG = False
@@ -554,6 +555,7 @@ class Controller():
     selected_direction: tuple[int, int] | None = None
     selected_route_id: int | None = None
     route_selection_required: bool = False
+    route_selection_preview_enabled: bool = False
     render_enabled: bool = True
 
     def __init__(self, routes, strip) -> None:
@@ -566,15 +568,45 @@ class Controller():
         self.selected_direction = None
         self.selected_route_id = None
         self.route_selection_required = False
+        self.route_selection_preview_enabled = False
         self.render_enabled = True
         self._selection_lock = threading.Lock()
         self._selection_generation = 0
         self._selection_changed = threading.Event()
+        self._route_selection_simulation = RouteSelectionSimulation(routes, strip)
 
     def require_route_selection(self):
         """Enable route-gated rendering and live polling for the touchscreen UI."""
         self.route_selection_required = True
         self.select_route(None)
+
+    def set_route_selection_preview_enabled(self, enabled: bool):
+        """Enable the isolated preview only while the UI shows route selection."""
+        enabled = bool(enabled)
+        with self._selection_lock:
+            if enabled and (
+                not self.route_selection_required
+                or self.selected_route_id is not None
+            ):
+                raise ValueError(
+                    "Route-selection preview requires an unselected UI route"
+                )
+            if self.route_selection_preview_enabled == enabled:
+                return
+            self.route_selection_preview_enabled = enabled
+            self._selection_generation += 1
+            self._selection_changed.set()
+            if not enabled:
+                self._route_selection_simulation.stop()
+                if self.trip_source is not None:
+                    now = datetime.now(timezone.utc)
+                    minute_value = round(60000 / self.tickinterval)
+                    for route in self.routes:
+                        route.set_trips([], now, minute_value)
+                        route.connections = []
+            if self.render_enabled:
+                self.reset_strip()
+                self.strip.show()
 
     def select_route(self, route_id: int | None):
         """Set the active route, invalidating pending live responses on changes."""
@@ -586,7 +618,13 @@ class Controller():
             if self.selected_route_id == route_id:
                 return
             self.selected_route_id = route_id
+            if route_id is not None:
+                self.route_selection_preview_enabled = False
             self._selection_generation += 1
+            self._route_selection_simulation.stop()
+            if self.render_enabled:
+                self.reset_strip()
+                self.strip.show()
         self._selection_changed.set()
         if self.route_selection_required and self.trip_source is not None:
             now = datetime.now(timezone.utc)
@@ -761,7 +799,8 @@ class Controller():
                 with self._selection_lock:
                     selected_route_id = self.selected_route_id
                     selection_generation = self._selection_generation
-                if selected_route_id is None:
+                    preview_enabled = self.route_selection_preview_enabled
+                if selected_route_id is None and not preview_enabled:
                     self._selection_changed.wait(timeout=0.1)
                     continue
             try:
@@ -806,9 +845,13 @@ class Controller():
                 with self._selection_lock:
                     if (
                         generation != self._selection_generation
-                        or self.selected_route_id is None
+                        or (
+                            self.selected_route_id is None
+                            and not self.route_selection_preview_enabled
+                        )
                     ):
                         continue
+                    selected_route_id = self.selected_route_id
             else:
                 snapshot = queued_snapshot
             if not isinstance(snapshot, dict):
@@ -816,11 +859,20 @@ class Controller():
                 continue
             for route in self.routes:
                 with self._selection_lock:
-                    if self.route_selection_required and (
-                        route.id != self.selected_route_id
-                        or generation != self._selection_generation
-                    ):
-                        continue
+                    if self.route_selection_required:
+                        if (
+                            generation != self._selection_generation
+                            or self.selected_route_id != selected_route_id
+                            or (
+                                selected_route_id is None
+                                and not self.route_selection_preview_enabled
+                            )
+                            or (
+                                selected_route_id is not None
+                                and route.id != selected_route_id
+                            )
+                        ):
+                            continue
                     route_data = snapshot.get(route.id)
                     if route_data is None:
                         continue
@@ -866,24 +918,39 @@ class Controller():
             if self.ticks % ticks_per_resync == 0:
                 # regelmaessiger Abgleich, damit sich Rundungsfehler nicht aufsummieren
                 self.sync_trains(log_arrivals=True)
-            if self.render_enabled:
-                self.reset_strip()
-            for route in self.routes:
-                if (
-                    self.route_selection_required
-                    and route.id != self.selected_route_id
-                ):
-                    continue
-                self._move_trains(route)
+            preview_rendered = False
+            if self.render_enabled and self.route_selection_required:
+                with self._selection_lock:
+                    if (
+                        self.selected_route_id is None
+                        and self.route_selection_preview_enabled
+                    ):
+                        self._route_selection_simulation.start()
+                        self._route_selection_simulation.render()
+                        preview_rendered = True
+                    else:
+                        self._route_selection_simulation.stop()
+            if not preview_rendered:
                 if self.render_enabled:
-                    self.draw(route)
-            if self.render_enabled:
-                self.strip.show()
+                    self.reset_strip()
+                for route in self.routes:
+                    if (
+                        self.route_selection_required
+                        and route.id != self.selected_route_id
+                    ):
+                        continue
+                    self._move_trains(route)
+                    if self.render_enabled:
+                        self.draw(route)
+                if self.render_enabled:
+                    self.strip.show()
             time.sleep(self.tickinterval / 1000)
 
     def stop(self):
-        self.stopped = True
-        self._selection_changed.set()
+        with self._selection_lock:
+            self.stopped = True
+            self._route_selection_simulation.stop()
+            self._selection_changed.set()
 
 
 # Kontroller move requests (intervall mäßig) und der Zug macht die Valedierungen jeh nach dem ob er sich bewegen darf anhand der ausgerechneten 

@@ -295,6 +295,30 @@ class CyclicRegressionTests(unittest.TestCase):
 
 
 class ControllerLiveTests(unittest.TestCase):
+    def test_controller_starts_route_selection_preview_only_when_enabled(self):
+        class RecordingStrip(FakeStrip):
+            def __init__(self, num):
+                super().__init__(num)
+                self.frames = []
+
+            def show(self):
+                self.frames.append(tuple(self._pixels))
+
+        base = datetime.now(timezone.utc) - timedelta(seconds=90)
+        route = make_route([Train(id="live", trip=make_trip(base=base))])
+        strip = RecordingStrip(15)
+        controller = Controller([route], strip)
+        controller.require_route_selection()
+        controller.set_route_selection_preview_enabled(True)
+
+        with patch("classes.time.sleep", side_effect=lambda _seconds: controller.stop()):
+            controller.start()
+
+        preview_frames = [frame for frame in strip.frames if any(frame)]
+        self.assertEqual(len(preview_frames), 1)
+        self.assertEqual(preview_frames[0][5], 0)
+        self.assertNotIn(0xFFFFFF, preview_frames[0])
+
     def test_disabled_rendering_does_not_write_to_led_strip(self):
         route = make_route()
         strip = FakeStrip(15)
@@ -307,7 +331,7 @@ class ControllerLiveTests(unittest.TestCase):
 
         self.assertEqual(strip.getPixelColor(0), 0xFF0000)
 
-    def test_ui_selection_waits_for_a_route_and_stops_fetching_when_deselected(self):
+    def test_ui_fetches_all_routes_only_while_route_selection_preview_is_enabled(self):
         route = make_route()
         controller = Controller([route], FakeStrip(15))
         controller.require_route_selection()
@@ -318,7 +342,7 @@ class ControllerLiveTests(unittest.TestCase):
         def source(_moment, route_id):
             requested_routes.append(route_id)
             request_received.set()
-            return {route_id: []}
+            return {route.id: []} if route_id is None else {route_id: []}
 
         controller.trip_source = source
         controller.stopped = False
@@ -327,8 +351,16 @@ class ControllerLiveTests(unittest.TestCase):
         time.sleep(0.1)
         self.assertEqual(requested_routes, [])
 
+        controller.set_route_selection_preview_enabled(True)
+        self.assertTrue(request_received.wait(timeout=1.0))
+        self.assertEqual(requested_routes, [None])
+        request_received.clear()
+
         controller.select_route(route.id)
         self.assertTrue(request_received.wait(timeout=1.0))
+        self.assertEqual(requested_routes, [None, route.id])
+        request_received.clear()
+
         controller.select_route(None)
         request_count = len(requested_routes)
         time.sleep(0.1)
@@ -336,8 +368,52 @@ class ControllerLiveTests(unittest.TestCase):
         worker.join(timeout=1.0)
 
         self.assertFalse(worker.is_alive())
-        self.assertEqual(requested_routes, [route.id])
         self.assertEqual(len(requested_routes), request_count)
+
+    def test_route_selection_preview_stops_when_a_route_is_selected(self):
+        route = make_route([Train(id="live", trip=make_trip())])
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+        controller.require_route_selection()
+        controller.set_route_selection_preview_enabled(True)
+        controller._route_selection_simulation.start()
+        controller._route_selection_simulation.render(T0 + timedelta(seconds=90))
+        self.assertTrue(controller._route_selection_simulation.active)
+        self.assertTrue(any(strip.getPixelColor(i) for i in range(15)))
+
+        controller.select_route(route.id)
+
+        self.assertFalse(controller._route_selection_simulation.active)
+        self.assertFalse(controller.route_selection_preview_enabled)
+        self.assertEqual([strip.getPixelColor(i) for i in range(15)], [0] * 15)
+
+    def test_unselected_preview_applies_all_live_routes_and_rejects_stale_data(self):
+        first_route = make_route()
+        second_route = make_route()
+        second_route.id = 1
+        strip = FakeStrip(15)
+        controller = Controller([first_route, second_route], strip)
+        controller.require_route_selection()
+        controller.trip_source = lambda *_args: {}
+        controller.set_route_selection_preview_enabled(True)
+        generation = controller._selection_generation
+        snapshot = {
+            0: [make_trip("live-0")],
+            1: [make_trip("live-1")],
+        }
+        controller._live_queue.put((generation, snapshot))
+
+        controller._drain_live_queue(600)
+
+        self.assertEqual([train.id for train in first_route.trains], ["live-0"])
+        self.assertEqual([train.id for train in second_route.trains], ["live-1"])
+
+        controller.select_route(first_route.id)
+        controller._live_queue.put((generation, snapshot))
+        controller._drain_live_queue(600)
+
+        self.assertEqual(first_route.trains, [])
+        self.assertEqual(second_route.trains, [])
 
     def test_ui_route_selection_only_draws_the_selected_route(self):
         first_route = make_route()

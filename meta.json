@@ -722,6 +722,136 @@
           "de:08311:30424"
         ]
       }
+    },
+    {
+      "id": 4,
+      "name": "Linie 5",
+      "color": [
+        0,
+        0,
+        255
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        10,
+        6,
+        10,
+        7,
+        5,
+        4,
+        7,
+        6,
+        8,
+        12,
+        4,
+        5,
+        7,
+        7,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Bollerstaudenstraße",
+          "position": 0,
+          "trias_ref": "de:08311:30727"
+        },
+        {
+          "id": 1,
+          "name": "Maria-von-Rudloff-Platz",
+          "position": 10,
+          "trias_ref": "de:08311:30734"
+        },
+        {
+          "id": 2,
+          "name": "Geschwister-Scholl-Platz",
+          "position": 16,
+          "trias_ref": "de:08311:30733"
+        },
+        {
+          "id": 3,
+          "name": "Am Lindenwäldle",
+          "position": 26,
+          "trias_ref": "de:08311:30601"
+        },
+        {
+          "id": 4,
+          "name": "Krozinger Straße",
+          "position": 33,
+          "trias_ref": "de:08311:30602"
+        },
+        {
+          "id": 5,
+          "name": "Dorfbrunnen",
+          "position": 38,
+          "trias_ref": "de:08311:30603"
+        },
+        {
+          "id": 6,
+          "name": "Scherrerplatz",
+          "position": 42,
+          "trias_ref": "de:08311:30604"
+        },
+        {
+          "id": 7,
+          "name": "Haslach Bad",
+          "position": 49,
+          "trias_ref": "de:08311:30605"
+        },
+        {
+          "id": 8,
+          "name": "Pressehaus",
+          "position": 55,
+          "trias_ref": "de:08311:30616"
+        },
+        {
+          "id": 9,
+          "name": "H.-von-Stephan-Straße",
+          "position": 63,
+          "trias_ref": "de:08311:30411"
+        },
+        {
+          "id": 10,
+          "name": "Mattenstraße",
+          "position": 75,
+          "trias_ref": "de:08311:30123"
+        },
+        {
+          "id": 11,
+          "name": "Erbprinzenstraße",
+          "position": 79,
+          "trias_ref": "de:08311:30114"
+        },
+        {
+          "id": 12,
+          "name": "Stadttheater",
+          "position": 84,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 13,
+          "name": "Fahnenbergplatz",
+          "position": 91,
+          "trias_ref": "de:08311:30105"
+        },
+        {
+          "id": 14,
+          "name": "Europaplatz",
+          "position": 98,
+          "trias_ref": "de:08311:30101"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11005:I:H",
+          "frb:11005:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30727",
+          "de:08311:30101"
+        ]
+      }
     }
   ],
   "trias": {

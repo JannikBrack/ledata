@@ -375,6 +375,7 @@ class TramUI:
 
     def show_routes(self):
         self.controller.select_route(None)
+        self.controller.set_route_selection_preview_enabled(True)
         self.controller.select_train(None)
         self.controller.select_direction(None, None)
         self.route = None
@@ -440,6 +441,7 @@ class TramUI:
             body.grid_rowconfigure(row, weight=1)
 
     def show_closure_editor(self, route_id: int):
+        self.controller.set_route_selection_preview_enabled(False)
         route = next(route for route in self.routes if route.id == route_id)
         self.route = route
         self.screen = "closure"

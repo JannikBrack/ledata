@@ -84,10 +84,33 @@ class RouteSelectionUITests(unittest.TestCase):
         app.show_routes()
 
         button_labels = [
-            call.kwargs["text"] for call in app.tk.Button.call_args_list
+            call.kwargs["text"]
+            for call in app.tk.Button.call_args_list
         ]
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
         app.controller.select_route.assert_called_once_with(None)
+        app.controller.set_route_selection_preview_enabled.assert_called_once_with(
+            True
+        )
+
+    def test_closure_editor_disables_route_selection_preview(self):
+        route = make_route()
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [route]
+        app.root = MagicMock()
+        app.tk = MagicMock()
+        app.ttk = MagicMock()
+        app.closure_store = None
+        app._clear = MagicMock()
+        app._header = MagicMock()
+
+        app.show_closure_editor(route.id)
+
+        app.controller.set_route_selection_preview_enabled.assert_called_once_with(
+            False
+        )
+        self.assertEqual(app.screen, "closure")
 
     def test_orange_route_button_uses_white_text(self):
         route = make_route()

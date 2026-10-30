@@ -13,7 +13,7 @@ Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
 etwaige Baustellenmarkierung bleiben sichtbar.
-Konfiguriert sind die Linien 1 bis 4. Linie 3 folgt regulär der Strecke
+Konfiguriert sind die Linien 1 bis 5. Linie 3 folgt regulär der Strecke
 Munzinger Straße → Gundelfinger Straße; die Haltestellenfolge der Rückrichtung
 wird für Live-Fahrten ebenfalls berücksichtigt. Linie 4 ist mit der Grundrichtung
 Messe Freiburg → Innsbrucker Straße konfiguriert; Europa-Park Stadion wird gemäß
@@ -21,12 +21,20 @@ VAG-Fahrplan in der Richtung Messe → Vauban berücksichtigt. Live-Fahrten beid
 Richtungen nutzen die verifizierten TRIAS-Referenzen. Quellen: [VAG-Linienfahrplan
 Linie 4](https://www.vag-freiburg.de/fileadmin/vag_freiburg_media/downloads/linienplaene/Linie_4_ab_19_10.pdf)
 und [MobiData BW TRIAS](https://mobidata-bw.de/dataset/trias).
-Im Live-Modus werden in der Touchscreen-Oberfläche nur Daten der ausgewählten
-Linie abgefragt. Auf der Linienauswahlseite bleibt der LED-Streifen aus und es
-werden keine Live-Abfragen ausgeführt. In der Linienübersicht leuchten alle
-aktiven Bahnen der gewählten Linie; in der Detailansicht nur die ausgewählte
-Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten protokolliert,
-der LED-Streifen wird dort jedoch nicht angesteuert.
+Linie 5 folgt der Grundstrecke Bollerstaudenstraße → Europaplatz. Die
+reguläre Verlängerung einzelner Fahrten via Johanneskirche bis Bertoldsbrunnen
+ist nicht Teil dieser Konfiguration. Quellen: [VAG-Linienfahrplan Linie 5](https://www.vag-freiburg.de/fileadmin/vag_freiburg_media/downloads/linienplaene/Linie_5_ab_19_10.pdf)
+und [MobiData BW TRIAS](https://mobidata-bw.de/dataset/trias).
+Im Live-Modus werden in der Touchscreen-Oberfläche auf der Linienauswahlseite
+Live-Daten aller Linien für eine dynamische LED-Vorschau abgefragt. Die
+Vorschau zeigt aktive Bahnen in ihrer Linienfarbe, ohne Stations- oder
+Baustellenmarker; wenn Bahnen verschiedener Linien dieselbe LED-Position
+belegen, leuchtet sie weiß. Sie ist ausschließlich auf der Linienauswahlseite
+aktiv und stoppt bei der Linienauswahl. Im Fahrplanmodus zeigt sie die
+vorhandenen Fahrplandaten (aktuell nur Linie 1). In der Linienübersicht leuchten
+alle aktiven Bahnen der gewählten Linie; in der Detailansicht nur die
+ausgewählte Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten
+protokolliert, der LED-Streifen wird dort jedoch nicht angesteuert.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
