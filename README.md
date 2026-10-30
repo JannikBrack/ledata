@@ -14,7 +14,7 @@ die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filter
 Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
 etwaige Baustellenmarkierung bleiben sichtbar.
 Konfiguriert sind die Linien 1 bis 4. Linie 3 folgt regulär der Strecke
-Gundelfinger Straße → Munzinger Straße; die Haltestellenfolge der Rückrichtung
+Munzinger Straße → Gundelfinger Straße; die Haltestellenfolge der Rückrichtung
 wird für Live-Fahrten ebenfalls berücksichtigt. Linie 4 ist mit der Grundrichtung
 Messe Freiburg → Innsbrucker Straße konfiguriert; Europa-Park Stadion wird gemäß
 VAG-Fahrplan in der Richtung Messe → Vauban berücksichtigt. Live-Fahrten beider
