@@ -84,9 +84,52 @@ class RouteSelectionUITests(unittest.TestCase):
         app.show_routes()
 
         button_labels = [
-            call.kwargs["text"] for call in app.tk.Button.call_args_list
+            call.kwargs["text"]
+            for call in app.tk.Button.call_args_list
         ]
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
+        app.controller.select_route.assert_called_once_with(None)
+        app.controller.set_route_selection_preview_enabled.assert_called_once_with(
+            True
+        )
+
+    def test_closure_editor_disables_route_selection_preview(self):
+        route = make_route()
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [route]
+        app.root = MagicMock()
+        app.tk = MagicMock()
+        app.ttk = MagicMock()
+        app.closure_store = None
+        app._clear = MagicMock()
+        app._header = MagicMock()
+
+        app.show_closure_editor(route.id)
+
+        app.controller.set_route_selection_preview_enabled.assert_called_once_with(
+            False
+        )
+        self.assertEqual(app.screen, "closure")
+
+    def test_orange_route_button_uses_white_text(self):
+        route = make_route()
+        route.color = (255, 128, 0)
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.routes = [route]
+        app.root = MagicMock()
+        app.root.winfo_children.return_value = []
+        app.tk = MagicMock()
+        app.closure_store = None
+        app._header = MagicMock()
+
+        app.show_routes()
+
+        button_options = app.tk.Button.call_args.kwargs
+        self.assertEqual(button_options["background"], "#ff8000")
+        self.assertEqual(button_options["foreground"], "white")
+        self.assertEqual(button_options["activeforeground"], "white")
 
     def test_train_plan_header_shows_closure_next_to_route_name(self):
         route = make_route()
@@ -106,6 +149,7 @@ class RouteSelectionUITests(unittest.TestCase):
         app.show_trains(route.id)
 
         app._header.assert_called_once_with("Linie 7 · ⚠ Baustelle", "Linien")
+        app.controller.select_route.assert_called_once_with(route.id)
 
 
 class TrainInfoTests(unittest.TestCase):
@@ -803,6 +847,26 @@ class DirectionFilterUITests(unittest.TestCase):
 
 
 class ControllerTrainSelectionTests(unittest.TestCase):
+    def test_stopped_station_blinks_in_route_color(self):
+        train = make_train("stopped", cyclic=True)
+        train.position = 5
+        train.at_station = True
+        route = make_route([train])
+        route.color = (19, 165, 56)
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+
+        controller.ticks = 0
+        controller.draw(route)
+        self.assertEqual(strip.getPixelColor(5), 0x13A538)
+        self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
+        self.assertEqual(strip.getPixelColor(10), 0xFFFFFF)
+
+        controller.reset_strip()
+        controller.ticks = 8
+        controller.draw(route)
+        self.assertEqual(strip.getPixelColor(5), 0)
+
     def test_direction_selection_only_renders_trains_heading_to_selected_endpoint(self):
         outbound = make_train("outbound", direction=1, cyclic=True)
         inbound = make_train("inbound", direction=-1, cyclic=True)
@@ -857,7 +921,7 @@ class ControllerTrainSelectionTests(unittest.TestCase):
         for position in (0, 5, 10):
             self.assertEqual(strip.getPixelColor(position), 0xFFFFFF)
         for position in range(6, 10):
-            self.assertEqual(strip.getPixelColor(position), 0xFF8000)
+            self.assertEqual(strip.getPixelColor(position), 0xFFFF00)
 
     def test_selected_train_is_the_only_train_rendered(self):
         selected = make_train("selected", cyclic=True)
@@ -894,7 +958,7 @@ class ControllerTrainSelectionTests(unittest.TestCase):
         self.assertEqual(strip.getPixelColor(2), 0xFF0000)
         self.assertEqual(strip.getPixelColor(8), 0xFF0000)
 
-    def test_closed_section_is_orange_between_station_pixels(self):
+    def test_closed_section_is_yellow_between_station_pixels(self):
         route = make_route()
         route.set_closed_section((0, 2))
         strip = FakeStrip(15)
@@ -905,7 +969,7 @@ class ControllerTrainSelectionTests(unittest.TestCase):
         self.assertEqual(strip.getPixelColor(0), 0xFFFFFF)
         self.assertEqual(strip.getPixelColor(10), 0xFFFFFF)
         for position in range(1, 10):
-            self.assertEqual(strip.getPixelColor(position), 0xFF8000)
+            self.assertEqual(strip.getPixelColor(position), 0xFFFF00)
 
 
 if __name__ == "__main__":

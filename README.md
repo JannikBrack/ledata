@@ -13,6 +13,28 @@ Große Schaltflächen erleichtern die Bedienung auf kleinen Touchscreens; über
 die Richtungsschaltflächen lässt sich nach der aktuellen Endhaltestelle filtern.
 Der LED-Streifen zeigt dann nur Bahnen dieser Richtung; Haltestellen und eine
 etwaige Baustellenmarkierung bleiben sichtbar.
+Konfiguriert sind die Linien 1 bis 5. Linie 3 folgt regulär der Strecke
+Munzinger Straße → Gundelfinger Straße; die Haltestellenfolge der Rückrichtung
+wird für Live-Fahrten ebenfalls berücksichtigt. Linie 4 ist mit der Grundrichtung
+Messe Freiburg → Innsbrucker Straße konfiguriert; Europa-Park Stadion wird gemäß
+VAG-Fahrplan in der Richtung Messe → Vauban berücksichtigt. Live-Fahrten beider
+Richtungen nutzen die verifizierten TRIAS-Referenzen. Quellen: [VAG-Linienfahrplan
+Linie 4](https://www.vag-freiburg.de/fileadmin/vag_freiburg_media/downloads/linienplaene/Linie_4_ab_19_10.pdf)
+und [MobiData BW TRIAS](https://mobidata-bw.de/dataset/trias).
+Linie 5 folgt der Grundstrecke Bollerstaudenstraße → Europaplatz. Die
+reguläre Verlängerung einzelner Fahrten via Johanneskirche bis Bertoldsbrunnen
+ist nicht Teil dieser Konfiguration. Quellen: [VAG-Linienfahrplan Linie 5](https://www.vag-freiburg.de/fileadmin/vag_freiburg_media/downloads/linienplaene/Linie_5_ab_19_10.pdf)
+und [MobiData BW TRIAS](https://mobidata-bw.de/dataset/trias).
+Im Live-Modus werden in der Touchscreen-Oberfläche auf der Linienauswahlseite
+Live-Daten aller Linien für eine dynamische LED-Vorschau abgefragt. Die
+Vorschau zeigt aktive Bahnen in ihrer Linienfarbe, ohne Stations- oder
+Baustellenmarker; wenn Bahnen verschiedener Linien dieselbe LED-Position
+belegen, leuchtet sie weiß. Sie ist ausschließlich auf der Linienauswahlseite
+aktiv und stoppt bei der Linienauswahl. Im Fahrplanmodus zeigt sie die
+vorhandenen Fahrplandaten (aktuell nur Linie 1). In der Linienübersicht leuchten
+alle aktiven Bahnen der gewählten Linie; in der Detailansicht nur die
+ausgewählte Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten
+protokolliert, der LED-Streifen wird dort jedoch nicht angesteuert.
 Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
 gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
 Streckenabschnitte dazwischen gelten als gesperrt.
@@ -26,14 +48,14 @@ regulären Endstationen zusammengeführt, wenn der Anschluss nach mindestens
 fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht
 als vollständige Verbindung; die echten Teilfahrten bleiben auf den LEDs
 getrennt sichtbar. Der gesperrte Streckenabschnitt wird auf dem LED-Streifen
-orange markiert.
+gelb markiert; Linie 3 leuchtet orange.
 
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
 nächsten Live-Start fragt die Anwendung im Terminal, ob die gespeicherte
 Baustelle noch besteht. Mit `j` wird sie übernommen, mit `n` entfernt. Danach
-startet die Touchscreen-UI im Vollbild; im `--terminal`-Betrieb bleibt die
-textbasierte Steuerung aktiv. Die Datei enthält Laufzeitstatus und wird deshalb
-nicht von Git erfasst.
+startet die Touchscreen-UI im Vollbild. Der `--terminal`-Betrieb fragt nur die
+Baustellen ab und protokolliert den Prozess. Die Datei enthält Laufzeitstatus
+und wird deshalb nicht von Git erfasst.
 Die Verspätung je Bahn wird in der Liste und Detailansicht angezeigt. Sie
 bezieht sich auf den aktuellen beziehungsweise zuletzt erreichten Halt;
 pünktliche Bahnen werden entsprechend markiert. Die höheren Listeneinträge
@@ -50,10 +72,10 @@ Bei einer Baustellen-Verbindung ist der Baustellenhinweis oberhalb der Liste
 sichtbar und erscheint zusätzlich an seiner Stelle in der Haltefolge; während
 des Fußwegs wird der Umstieg als aktuelle Position markiert.
 
-Mit `--terminal` bleibt der bisherige Terminalbetrieb verfügbar. Auf anderen
-Systemen kann die grafische Oberfläche mit `--ui` explizit gestartet werden,
-sofern eine Desktop-Anzeige vorhanden ist. `--dry-run` behält standardmäßig
-den bisherigen Terminal-Simulationsmodus bei.
+Mit `--terminal` wird keine LED-Anzeige gestartet; der Prozess wird im Terminal
+protokolliert und gespeicherte Baustellen werden abgefragt. Auf anderen Systemen
+kann die grafische Oberfläche mit `--ui` explizit gestartet werden, sofern eine
+Desktop-Anzeige vorhanden ist. `--dry-run` startet ohne LED-Hardware.
 
 ```bash
 python3 main.py

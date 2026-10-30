@@ -448,10 +448,11 @@ class LiveFeed:
             )
         ]
 
-    def fetch(self, now):
+    def fetch(self, now, route_id=None):
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
+        selected_route_id = route_id
         result = {}
         closures = (
             self.closure_provider()
@@ -460,6 +461,8 @@ class LiveFeed:
         )
         for route in self.routes:
             route_id = route["id"]
+            if selected_route_id is not None and route_id != selected_route_id:
+                continue
             trias = route["trias"]
             line_refs = trias["line_refs"]
             origin_refs = trias["origin_refs"]

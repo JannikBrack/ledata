@@ -213,6 +213,645 @@
           "de:08311:30300"
         ]
       }
+    },
+    {
+      "id": 1,
+      "name": "Linie 2",
+      "color": [
+        19,
+        165,
+        56
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        13,
+        4,
+        9,
+        4,
+        14,
+        9,
+        14,
+        8,
+        8,
+        7,
+        5,
+        5,
+        4,
+        4,
+        4,
+        4,
+        4,
+        3,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Hornusstraße",
+          "position": 0,
+          "trias_ref": "de:08311:30200"
+        },
+        {
+          "id": 1,
+          "name": "Eugen-Martin-Straße",
+          "position": 13,
+          "trias_ref": "de:08311:30137"
+        },
+        {
+          "id": 2,
+          "name": "Zollhallenplatz",
+          "position": 17,
+          "trias_ref": "de:08311:30136"
+        },
+        {
+          "id": 3,
+          "name": "Hauptfriedhof",
+          "position": 26,
+          "trias_ref": "de:08311:30205"
+        },
+        {
+          "id": 4,
+          "name": "Friedrich-Ebert-Platz",
+          "position": 30,
+          "trias_ref": "de:08311:30811"
+        },
+        {
+          "id": 5,
+          "name": "Robert-Koch-Straße",
+          "position": 44,
+          "trias_ref": "de:08311:30810"
+        },
+        {
+          "id": 6,
+          "name": "Rathaus im Stühlinger",
+          "position": 53,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 7,
+          "name": "Eschholzstraße",
+          "position": 67,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 8,
+          "name": "Hauptbahnhof",
+          "position": 75,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 9,
+          "name": "Stadttheater",
+          "position": 83,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 10,
+          "name": "Bertoldsbrunnen",
+          "position": 90,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 11,
+          "name": "Holzmarkt",
+          "position": 95,
+          "trias_ref": "de:08311:30103"
+        },
+        {
+          "id": 12,
+          "name": "Johanneskirche",
+          "position": 100,
+          "trias_ref": "de:08311:30104"
+        },
+        {
+          "id": 13,
+          "name": "Lorettostraße",
+          "position": 104,
+          "trias_ref": "de:08311:30405"
+        },
+        {
+          "id": 14,
+          "name": "Holbeinstraße",
+          "position": 108,
+          "trias_ref": "de:08311:30404"
+        },
+        {
+          "id": 15,
+          "name": "Wonnhalde",
+          "position": 112,
+          "trias_ref": "de:08311:30403"
+        },
+        {
+          "id": 16,
+          "name": "Wiesenweg",
+          "position": 116,
+          "trias_ref": "de:08311:30402"
+        },
+        {
+          "id": 17,
+          "name": "Klosterplatz",
+          "position": 120,
+          "trias_ref": "de:08311:30401"
+        },
+        {
+          "id": 18,
+          "name": "Dorfstraße",
+          "position": 123,
+          "trias_ref": "de:08311:30400"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11002:I:H",
+          "frb:11002:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30200",
+          "de:08311:30400"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "Linie 3",
+      "color": [
+        255,
+        128,
+        0
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        3,
+        2,
+        3,
+        3,
+        3,
+        8,
+        5,
+        8,
+        7,
+        7,
+        7,
+        8,
+        7,
+        13,
+        6,
+        9,
+        7,
+        5,
+        7,
+        8,
+        7,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Munzinger Straße",
+          "position": 0,
+          "trias_ref": "de:08311:30716"
+        },
+        {
+          "id": 1,
+          "name": "VAG-Zentrum",
+          "position": 3,
+          "trias_ref": "de:08311:30715"
+        },
+        {
+          "id": 2,
+          "name": "Am Lindenwäldle",
+          "position": 5,
+          "trias_ref": "de:08311:30601"
+        },
+        {
+          "id": 3,
+          "name": "Bugginger Straße",
+          "position": 8,
+          "trias_ref": "de:08311:30600"
+        },
+        {
+          "id": 4,
+          "name": "Rohrgraben",
+          "position": 11,
+          "trias_ref": "de:08311:30607"
+        },
+        {
+          "id": 5,
+          "name": "Bissierstraße",
+          "position": 14,
+          "trias_ref": "de:08311:30505"
+        },
+        {
+          "id": 6,
+          "name": "Runzmattenweg",
+          "position": 22,
+          "trias_ref": "de:08311:30501"
+        },
+        {
+          "id": 7,
+          "name": "Rathaus im Stühlinger",
+          "position": 27,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 8,
+          "name": "Eschholzstraße",
+          "position": 35,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 9,
+          "name": "Hauptbahnhof",
+          "position": 42,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 10,
+          "name": "Stadttheater",
+          "position": 49,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 11,
+          "name": "Bertoldsbrunnen",
+          "position": 56,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 12,
+          "name": "Europaplatz",
+          "position": 64,
+          "trias_ref": "de:08311:30101"
+        },
+        {
+          "id": 13,
+          "name": "Tennenbacher Straße",
+          "position": 71,
+          "trias_ref": "de:08311:30102"
+        },
+        {
+          "id": 14,
+          "name": "Hauptstraße",
+          "position": 84,
+          "trias_ref": "de:08311:30204"
+        },
+        {
+          "id": 15,
+          "name": "Okenstraße",
+          "position": 90,
+          "trias_ref": "de:08311:30203"
+        },
+        {
+          "id": 16,
+          "name": "Hornusstraße",
+          "position": 99,
+          "trias_ref": "de:08311:30200"
+        },
+        {
+          "id": 17,
+          "name": "Tullastraße",
+          "position": 106,
+          "trias_ref": "de:08311:30201"
+        },
+        {
+          "id": 18,
+          "name": "Reutebachgasse",
+          "position": 111,
+          "trias_ref": "de:08311:30202"
+        },
+        {
+          "id": 19,
+          "name": "Berggasse",
+          "position": 118,
+          "trias_ref": "de:08311:30431"
+        },
+        {
+          "id": 20,
+          "name": "Glottertalstraße",
+          "position": 126,
+          "trias_ref": "de:08311:30432"
+        },
+        {
+          "id": 21,
+          "name": "Gundelfinger Straße",
+          "position": 133,
+          "trias_ref": "de:08311:750"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11003:I:H",
+          "frb:11003:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30716",
+          "de:08311:750"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "Linie 4",
+      "color": [
+        255,
+        0,
+        128
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        2,
+        3,
+        5,
+        4,
+        5,
+        2,
+        9,
+        14,
+        8,
+        8,
+        7,
+        6,
+        5,
+        12,
+        13,
+        6,
+        5,
+        6,
+        7,
+        9,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Messe Freiburg",
+          "position": 0,
+          "trias_ref": "de:08311:30234"
+        },
+        {
+          "id": 1,
+          "name": "Europa-Park Stadion",
+          "position": 2,
+          "trias_ref": "de:08311:30979"
+        },
+        {
+          "id": 2,
+          "name": "Technische Fakultät",
+          "position": 5,
+          "trias_ref": "de:08311:30813"
+        },
+        {
+          "id": 3,
+          "name": "Elsässer Straße",
+          "position": 10,
+          "trias_ref": "de:08311:30807"
+        },
+        {
+          "id": 4,
+          "name": "Berliner Allee",
+          "position": 14,
+          "trias_ref": "de:08311:30808"
+        },
+        {
+          "id": 5,
+          "name": "Killianstraße",
+          "position": 19,
+          "trias_ref": "de:08311:30809"
+        },
+        {
+          "id": 6,
+          "name": "Robert-Koch-Straße",
+          "position": 21,
+          "trias_ref": "de:08311:30810"
+        },
+        {
+          "id": 7,
+          "name": "Rathaus im Stühlinger",
+          "position": 30,
+          "trias_ref": "de:08311:30500"
+        },
+        {
+          "id": 8,
+          "name": "Eschholzstraße",
+          "position": 44,
+          "trias_ref": "de:08311:30108"
+        },
+        {
+          "id": 9,
+          "name": "Hauptbahnhof",
+          "position": 52,
+          "trias_ref": "de:08311:6508"
+        },
+        {
+          "id": 10,
+          "name": "Stadttheater",
+          "position": 60,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 11,
+          "name": "Bertoldsbrunnen",
+          "position": 67,
+          "trias_ref": "de:08311:30100"
+        },
+        {
+          "id": 12,
+          "name": "Holzmarkt",
+          "position": 73,
+          "trias_ref": "de:08311:30103"
+        },
+        {
+          "id": 13,
+          "name": "Johanneskirche",
+          "position": 78,
+          "trias_ref": "de:08311:30104"
+        },
+        {
+          "id": 14,
+          "name": "Reiterstraße",
+          "position": 90,
+          "trias_ref": "de:08311:30408"
+        },
+        {
+          "id": 15,
+          "name": "H.-von-Stephan-Straße",
+          "position": 103,
+          "trias_ref": "de:08311:30411"
+        },
+        {
+          "id": 16,
+          "name": "Weddigenstraße",
+          "position": 109,
+          "trias_ref": "de:08311:30415"
+        },
+        {
+          "id": 17,
+          "name": "Peter-Thumb-Straße",
+          "position": 114,
+          "trias_ref": "de:08311:30131"
+        },
+        {
+          "id": 18,
+          "name": "Paula-Modersohn-Platz",
+          "position": 120,
+          "trias_ref": "de:08311:30651"
+        },
+        {
+          "id": 19,
+          "name": "Vauban-Mitte",
+          "position": 127,
+          "trias_ref": "de:08311:30423"
+        },
+        {
+          "id": 20,
+          "name": "Innsbrucker Straße",
+          "position": 136,
+          "trias_ref": "de:08311:30424"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11004:I:H",
+          "frb:11004:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30234",
+          "de:08311:30424"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Linie 5",
+      "color": [
+        0,
+        0,
+        255
+      ],
+      "start_of_route": 0,
+      "led_layout": [
+        10,
+        6,
+        10,
+        7,
+        5,
+        4,
+        7,
+        6,
+        8,
+        12,
+        4,
+        5,
+        7,
+        7,
+        1
+      ],
+      "trains": [],
+      "stations": [
+        {
+          "id": 0,
+          "name": "Bollerstaudenstraße",
+          "position": 0,
+          "trias_ref": "de:08311:30727"
+        },
+        {
+          "id": 1,
+          "name": "Maria-von-Rudloff-Platz",
+          "position": 10,
+          "trias_ref": "de:08311:30734"
+        },
+        {
+          "id": 2,
+          "name": "Geschwister-Scholl-Platz",
+          "position": 16,
+          "trias_ref": "de:08311:30733"
+        },
+        {
+          "id": 3,
+          "name": "Am Lindenwäldle",
+          "position": 26,
+          "trias_ref": "de:08311:30601"
+        },
+        {
+          "id": 4,
+          "name": "Krozinger Straße",
+          "position": 33,
+          "trias_ref": "de:08311:30602"
+        },
+        {
+          "id": 5,
+          "name": "Dorfbrunnen",
+          "position": 38,
+          "trias_ref": "de:08311:30603"
+        },
+        {
+          "id": 6,
+          "name": "Scherrerplatz",
+          "position": 42,
+          "trias_ref": "de:08311:30604"
+        },
+        {
+          "id": 7,
+          "name": "Haslach Bad",
+          "position": 49,
+          "trias_ref": "de:08311:30605"
+        },
+        {
+          "id": 8,
+          "name": "Pressehaus",
+          "position": 55,
+          "trias_ref": "de:08311:30616"
+        },
+        {
+          "id": 9,
+          "name": "H.-von-Stephan-Straße",
+          "position": 63,
+          "trias_ref": "de:08311:30411"
+        },
+        {
+          "id": 10,
+          "name": "Mattenstraße",
+          "position": 75,
+          "trias_ref": "de:08311:30123"
+        },
+        {
+          "id": 11,
+          "name": "Erbprinzenstraße",
+          "position": 79,
+          "trias_ref": "de:08311:30114"
+        },
+        {
+          "id": 12,
+          "name": "Stadttheater",
+          "position": 84,
+          "trias_ref": "de:08311:30106"
+        },
+        {
+          "id": 13,
+          "name": "Fahnenbergplatz",
+          "position": 91,
+          "trias_ref": "de:08311:30105"
+        },
+        {
+          "id": 14,
+          "name": "Europaplatz",
+          "position": 98,
+          "trias_ref": "de:08311:30101"
+        }
+      ],
+      "trias": {
+        "line_refs": [
+          "frb:11005:I:H",
+          "frb:11005:I:R"
+        ],
+        "origin_refs": [
+          "de:08311:30727",
+          "de:08311:30101"
+        ]
+      }
     }
   ],
   "trias": {

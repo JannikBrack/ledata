@@ -336,6 +336,7 @@ class TramUI:
         self.root.configure(background="#f3f5f7")
         self.root.bind("<Escape>", lambda _event: self.go_back())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.controller.require_route_selection()
         self.show_routes()
         self.root.after(1000, self.refresh)
 
@@ -373,6 +374,8 @@ class TramUI:
         ).pack(side="right")
 
     def show_routes(self):
+        self.controller.select_route(None)
+        self.controller.set_route_selection_preview_enabled(True)
         self.controller.select_train(None)
         self.controller.select_direction(None, None)
         self.route = None
@@ -401,6 +404,7 @@ class TramUI:
                 padx=6,
                 pady=6,
             )
+            text_color = "black" if route.color == (255, 255, 0) else "white"
             tk.Button(
                 card,
                 text=(
@@ -410,9 +414,9 @@ class TramUI:
                 ),
                 command=lambda route_id=route.id: self.show_trains(route_id),
                 background=self._color(route.color),
-                foreground="white",
+                foreground=text_color,
                 activebackground=self._color(route.color),
-                activeforeground="white",
+                activeforeground=text_color,
                 font=("TkDefaultFont", 20, "bold"),
                 padx=16,
                 pady=12,
@@ -437,6 +441,7 @@ class TramUI:
             body.grid_rowconfigure(row, weight=1)
 
     def show_closure_editor(self, route_id: int):
+        self.controller.set_route_selection_preview_enabled(False)
         route = next(route for route in self.routes if route.id == route_id)
         self.route = route
         self.screen = "closure"
@@ -578,6 +583,7 @@ class TramUI:
 
     def show_trains(self, route_id: int):
         self.route = next(route for route in self.routes if route.id == route_id)
+        self.controller.select_route(route_id)
         self.controller.select_train(None)
         self.controller.select_direction(None, None)
         self.screen = "trains"
@@ -870,8 +876,8 @@ class TramUI:
         self._detail_section_label.pack(fill="x", pady=(0, 3))
         self._detail_closure_label = self.tk.Label(
             stops_frame,
-            background="#fff0d6",
-            foreground="#985400",
+            background="#fff9c4",
+            foreground="#7a5a00",
             font=("TkDefaultFont", 14, "bold"),
             anchor="w",
             justify="left",
@@ -921,8 +927,8 @@ class TramUI:
         )
         self._detail_stop_tree.tag_configure(
             "closure",
-            background="#fff0d6",
-            foreground="#985400",
+            background="#fff9c4",
+            foreground="#7a5a00",
         )
         self._detail_stop_tree.tag_configure("row", background="#ffffff")
         self._detail_stop_tree.tag_configure(
@@ -1245,6 +1251,7 @@ class TramUI:
             pass
 
     def close(self):
+        self.controller.select_route(None)
         self.controller.select_train(None)
         self.controller.stop()
         self.root.destroy()

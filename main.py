@@ -35,8 +35,7 @@ def load_json(path):
 
 def build_strip(led_config, dry_run=False):
     if dry_run or not HAVE_RPI:
-        # ohne Hardware: LED-Streifen als ASCII-Zeile im Terminal
-        return FakeStrip(led_config["count"], render=True)
+        return FakeStrip(led_config["count"])
     return PixelStrip(
         led_config["count"],
         led_config["pin"],
@@ -157,6 +156,7 @@ def confirm_saved_closures_in_terminal(routes, closure_store):
 
 def start_application(routes, controller, closure_store, use_ui):
     confirm_saved_closures_in_terminal(routes, closure_store)
+    controller.render_enabled = use_ui
     if use_ui:
         run_ui(routes, controller, closure_store)
     else:
@@ -208,8 +208,8 @@ def build_live_source(meta, closure_store=None):
     )
     route_configs = {route["id"]: route for route in meta["routes"]}
 
-    def source(now):
-        snapshot = feed.fetch(now)
+    def source(now, route_id=None):
+        snapshot = feed.fetch(now, route_id=route_id)
         for route_id, route_snapshot in snapshot.items():
             route_config = route_configs.get(route_id)
             if route_config is not None:
@@ -268,12 +268,12 @@ if __name__ == "__main__":
     parser.add_argument("--source", choices=["live", "fahrplan"], default="live",
                         help="live = Echtzeit aus der TRIAS-API (Standard), fahrplan = fahrplan.json")
     parser.add_argument("--dry-run", action="store_true",
-                        help="ohne LED-Hardware laufen, Streifen als ASCII im Terminal zeigen")
+                        help="ohne LED-Hardware laufen")
     ui_group = parser.add_mutually_exclusive_group()
     ui_group.add_argument("--ui", dest="ui", action="store_true",
                           help="Touchscreen-UI im Vollbild starten")
     ui_group.add_argument("--terminal", dest="ui", action="store_false",
-                          help="bisherigen Terminalbetrieb verwenden")
+                          help="nur Prozess protokollieren und Baustellen abfragen")
     parser.set_defaults(ui=None)
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
@@ -318,7 +318,6 @@ if __name__ == "__main__":
         pass
     finally:
         controller.stop()
-        controller.reset_strip()
-        strip.show()
-    if not use_ui:
-        print()
+        if controller.render_enabled:
+            controller.reset_strip()
+            strip.show()

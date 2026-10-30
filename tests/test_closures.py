@@ -105,6 +105,16 @@ class ClosureStoreTests(unittest.TestCase):
         run_ui.assert_called_once_with([route], controller, self.store)
         route.set_closed_section.assert_called_once_with(None)
 
+    def test_terminal_starts_controller_without_led_rendering(self):
+        controller = MagicMock()
+
+        with patch("main.run_ui") as run_ui:
+            start_application([], controller, None, use_ui=False)
+
+        self.assertFalse(controller.render_enabled)
+        controller.start.assert_called_once_with()
+        run_ui.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
