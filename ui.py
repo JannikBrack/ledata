@@ -403,11 +403,7 @@ class TramUI:
                 padx=6,
                 pady=6,
             )
-            text_color = (
-                "black"
-                if route.color in ((255, 255, 0), (255, 128, 0))
-                else "white"
-            )
+            text_color = "black" if route.color == (255, 255, 0) else "white"
             tk.Button(
                 card,
                 text=(

@@ -89,7 +89,7 @@ class RouteSelectionUITests(unittest.TestCase):
         self.assertEqual(button_labels, ["Linie 7 · ⚠ Baustelle", "Linie 8"])
         app.controller.select_route.assert_called_once_with(None)
 
-    def test_orange_route_button_uses_black_text_for_contrast(self):
+    def test_orange_route_button_uses_white_text(self):
         route = make_route()
         route.color = (255, 128, 0)
         app = TramUI.__new__(TramUI)
@@ -105,8 +105,8 @@ class RouteSelectionUITests(unittest.TestCase):
 
         button_options = app.tk.Button.call_args.kwargs
         self.assertEqual(button_options["background"], "#ff8000")
-        self.assertEqual(button_options["foreground"], "black")
-        self.assertEqual(button_options["activeforeground"], "black")
+        self.assertEqual(button_options["foreground"], "white")
+        self.assertEqual(button_options["activeforeground"], "white")
 
     def test_train_plan_header_shows_closure_next_to_route_name(self):
         route = make_route()
