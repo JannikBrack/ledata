@@ -16,6 +16,25 @@ from classes import (
     train_direction_destination_id,
 )
 
+UI_COLORS = {
+    "page": "#f4f7fb",
+    "surface": "#ffffff",
+    "surface_alt": "#f7f9fc",
+    "border": "#d9e2ec",
+    "text": "#172b3a",
+    "muted": "#5d6b78",
+    "primary": "#246b91",
+    "primary_hover": "#1d5878",
+    "selected": "#246b91",
+    "selected_soft": "#e4f0f7",
+    "warning_bg": "#fff4d6",
+    "warning_text": "#805b00",
+    "success_bg": "#e8f5ed",
+    "success_text": "#267246",
+    "danger": "#a83832",
+    "danger_bg": "#fbeceb",
+}
+
 
 @dataclass(frozen=True)
 class TrainInfo:
@@ -333,12 +352,130 @@ class TramUI:
 
         self.root.title("Straßenbahn-Anzeige")
         self.root.attributes("-fullscreen", True)
-        self.root.configure(background="#f3f5f7")
+        self.root.configure(background=UI_COLORS["page"])
+        self._configure_styles()
         self.root.bind("<Escape>", lambda _event: self.go_back())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.controller.require_route_selection()
         self.show_routes()
         self.root.after(1000, self.refresh)
+
+    def _configure_styles(self):
+        style = self.ttk.Style(self.root)
+        style.configure(
+            "App.TCombobox",
+            font=("TkDefaultFont", 16),
+            padding=8,
+            fieldbackground=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+        )
+        style.map(
+            "App.TCombobox",
+            fieldbackground=[("readonly", UI_COLORS["surface"])],
+            foreground=[("readonly", UI_COLORS["text"])],
+        )
+        style.configure(
+            "Touch.Treeview",
+            rowheight=72,
+            font=("TkDefaultFont", 14),
+            background=UI_COLORS["surface"],
+            fieldbackground=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+            borderwidth=0,
+            relief="flat",
+        )
+        style.map(
+            "Touch.Treeview",
+            background=[("selected", UI_COLORS["selected"])],
+            foreground=[("selected", "white")],
+        )
+        style.configure(
+            "Touch.Treeview.Heading",
+            font=("TkDefaultFont", 13, "bold"),
+            background=UI_COLORS["surface_alt"],
+            foreground=UI_COLORS["muted"],
+            padding=(8, 10),
+            relief="flat",
+        )
+        style.configure(
+            "Detail.Treeview",
+            rowheight=42,
+            font=("TkDefaultFont", 13),
+            background=UI_COLORS["surface"],
+            fieldbackground=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+            borderwidth=0,
+            relief="flat",
+        )
+        style.configure(
+            "Detail.Treeview.Heading",
+            font=("TkDefaultFont", 13, "bold"),
+            background=UI_COLORS["surface_alt"],
+            foreground=UI_COLORS["muted"],
+            padding=(8, 9),
+            relief="flat",
+        )
+
+    def _card(self, parent, *, padx=12, pady=12, **options):
+        return self.tk.Frame(
+            parent,
+            background=UI_COLORS["surface"],
+            padx=padx,
+            pady=pady,
+            bd=0,
+            highlightbackground=UI_COLORS["border"],
+            highlightthickness=1,
+            **options,
+        )
+
+    def _action_button(
+        self,
+        parent,
+        text: str,
+        command,
+        *,
+        variant="secondary",
+        **options,
+    ):
+        variants = {
+            "primary": (
+                UI_COLORS["primary"],
+                "white",
+                UI_COLORS["primary_hover"],
+            ),
+            "secondary": (
+                UI_COLORS["surface_alt"],
+                UI_COLORS["text"],
+                "#e8eef4",
+            ),
+            "danger": (
+                UI_COLORS["danger_bg"],
+                UI_COLORS["danger"],
+                "#f5d9d7",
+            ),
+        }
+        background, foreground, active_background = variants[variant]
+        button_options = {
+            "font": ("TkDefaultFont", 14, "bold"),
+            "padx": 14,
+            "pady": 10,
+            "background": background,
+            "foreground": foreground,
+            "activebackground": active_background,
+            "activeforeground": foreground,
+            "relief": "flat",
+            "bd": 0,
+            "highlightthickness": 1,
+            "highlightbackground": UI_COLORS["border"],
+            "cursor": "hand2",
+        }
+        button_options.update(options)
+        return self.tk.Button(
+            parent,
+            text=text,
+            command=command,
+            **button_options,
+        )
 
     def _clear(self):
         for child in self.root.winfo_children():
@@ -346,31 +483,33 @@ class TramUI:
 
     def _header(self, title: str, back_label: str | None = None):
         tk = self.tk
-        header = tk.Frame(self.root, background="#f3f5f7", padx=12, pady=8)
-        header.pack(fill="x")
+        header = self._card(self.root, padx=16, pady=10)
+        header.pack(fill="x", padx=12, pady=(10, 4))
         if back_label:
-            tk.Button(
+            self._action_button(
                 header,
                 text=back_label,
                 command=self.go_back,
-                font=("TkDefaultFont", 15, "bold"),
-                padx=14,
-                pady=11,
+                variant="secondary",
+                font=("TkDefaultFont", 14, "bold"),
+                pady=9,
             ).pack(side="left", padx=(0, 12))
         tk.Label(
             header,
             text=title,
-            background="#f3f5f7",
-            font=("TkDefaultFont", 20, "bold"),
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+            font=("TkDefaultFont", 21, "bold"),
             anchor="w",
         ).pack(side="left", fill="x", expand=True)
-        tk.Button(
+        self._action_button(
             header,
             text="Beenden",
             command=self.close,
-            font=("TkDefaultFont", 14, "bold"),
+            variant="secondary",
+            font=("TkDefaultFont", 13, "bold"),
             padx=12,
-            pady=11,
+            pady=9,
         ).pack(side="right")
 
     def show_routes(self):
@@ -384,28 +523,34 @@ class TramUI:
         self._header("Linie auswählen")
 
         tk = self.tk
-        body = tk.Frame(self.root, background="#f3f5f7", padx=12, pady=6)
-        body.pack(fill="both", expand=True)
+        body = tk.Frame(
+            self.root,
+            background=UI_COLORS["page"],
+            padx=14,
+            pady=6,
+        )
+        body.pack(fill="both", expand=True, padx=4, pady=4)
         if not self.routes:
             tk.Label(
                 body,
                 text="In meta.json sind keine Linien konfiguriert.",
-                background="#f3f5f7",
+                background=UI_COLORS["page"],
+                foreground=UI_COLORS["muted"],
                 font=("TkDefaultFont", 18),
             ).pack(anchor="w", pady=12)
             return
 
         for index, route in enumerate(self.routes):
-            card = tk.Frame(body, background="#f3f5f7")
+            card = self._card(body, padx=10, pady=10)
             card.grid(
                 row=index // 2,
                 column=index % 2,
                 sticky="nsew",
-                padx=6,
-                pady=6,
+                padx=8,
+                pady=8,
             )
-            text_color = "black" if route.color == (255, 255, 0) else "white"
-            tk.Button(
+            text_color = self._contrast_text_color(route.color)
+            self._action_button(
                 card,
                 text=(
                     f"{route.name} · ⚠ Baustelle"
@@ -413,17 +558,18 @@ class TramUI:
                     else route.name
                 ),
                 command=lambda route_id=route.id: self.show_trains(route_id),
+                variant="primary",
                 background=self._color(route.color),
                 foreground=text_color,
                 activebackground=self._color(route.color),
                 activeforeground=text_color,
-                font=("TkDefaultFont", 20, "bold"),
-                padx=16,
-                pady=12,
+                font=("TkDefaultFont", 21, "bold"),
+                padx=18,
+                pady=18,
                 wraplength=320,
             ).pack(fill="both", expand=True)
             if self.closure_store is not None:
-                tk.Button(
+                self._action_button(
                     card,
                     text=(
                         "Baustelle bearbeiten"
@@ -431,10 +577,10 @@ class TramUI:
                         else "Baustelle eintragen"
                     ),
                     command=lambda route_id=route.id: self.show_closure_editor(route_id),
+                    variant="secondary",
                     font=("TkDefaultFont", 13, "bold"),
-                    padx=8,
-                    pady=8,
-                ).pack(fill="x", pady=(5, 0))
+                    pady=9,
+                ).pack(fill="x", pady=(8, 0))
         for column in range(2):
             body.grid_columnconfigure(column, weight=1)
         for row in range((len(self.routes) + 1) // 2):
@@ -450,12 +596,13 @@ class TramUI:
 
         tk = self.tk
         ttk = self.ttk
-        body = tk.Frame(self.root, background="#f3f5f7", padx=18, pady=18)
-        body.pack(fill="both", expand=True)
+        body = self._card(self.root, padx=22, pady=20)
+        body.pack(fill="both", expand=True, padx=18, pady=12)
         tk.Label(
             body,
             text="Baustelle von/bis festlegen:",
-            background="#f3f5f7",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
             font=("TkDefaultFont", 18, "bold"),
         ).pack(anchor="w", pady=(0, 10))
 
@@ -486,7 +633,8 @@ class TramUI:
         tk.Label(
             body,
             text="Von",
-            background="#f3f5f7",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["muted"],
             font=("TkDefaultFont", 15, "bold"),
         ).pack(anchor="w")
         ttk.Combobox(
@@ -494,12 +642,13 @@ class TramUI:
             textvariable=self._closure_from_choice,
             values=labels,
             state="readonly",
-            font=("TkDefaultFont", 16),
-        ).pack(fill="x", pady=(0, 10))
+            style="App.TCombobox",
+        ).pack(fill="x", pady=(3, 14))
         tk.Label(
             body,
             text="Bis",
-            background="#f3f5f7",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["muted"],
             font=("TkDefaultFont", 15, "bold"),
         ).pack(anchor="w")
         ttk.Combobox(
@@ -507,26 +656,24 @@ class TramUI:
             textvariable=self._closure_to_choice,
             values=labels,
             state="readonly",
-            font=("TkDefaultFont", 16),
-        ).pack(fill="x", pady=(0, 16))
+            style="App.TCombobox",
+        ).pack(fill="x", pady=(3, 18))
 
-        tk.Button(
+        self._action_button(
             body,
             text="Baustelle speichern",
             command=lambda: self._save_closure(route),
+            variant="primary",
             font=("TkDefaultFont", 16, "bold"),
-            padx=14,
-            pady=12,
-        ).pack(anchor="w", pady=5)
+        ).pack(fill="x", pady=5)
         if current is not None:
-            tk.Button(
+            self._action_button(
                 body,
                 text="Baustelle entfernen",
                 command=lambda: self._remove_closure(route),
+                variant="danger",
                 font=("TkDefaultFont", 16, "bold"),
-                padx=14,
-                pady=12,
-            ).pack(anchor="w", pady=5)
+            ).pack(fill="x", pady=5)
 
     def _save_closure(self, route: Route):
         first_id = self._closure_station_choices.get(
@@ -581,6 +728,27 @@ class TramUI:
     def _color(rgb: tuple[int, int, int]) -> str:
         return "#%02x%02x%02x" % tuple(max(0, min(255, int(value))) for value in rgb)
 
+    @staticmethod
+    def _contrast_text_color(rgb: tuple[int, int, int]) -> str:
+        def luminance_component(value: int) -> float:
+            component = max(0, min(255, int(value))) / 255
+            if component <= 0.04045:
+                return component / 12.92
+            return ((component + 0.055) / 1.055) ** 2.4
+
+        luminance = (
+            0.2126 * luminance_component(rgb[0])
+            + 0.7152 * luminance_component(rgb[1])
+            + 0.0722 * luminance_component(rgb[2])
+        )
+        dark_luminance = sum(
+            weight * luminance_component(int(UI_COLORS["text"][index:index + 2], 16))
+            for weight, index in ((0.2126, 1), (0.7152, 3), (0.0722, 5))
+        )
+        dark_contrast = (luminance + 0.05) / (dark_luminance + 0.05)
+        light_contrast = 1.05 / (luminance + 0.05)
+        return UI_COLORS["text"] if dark_contrast >= light_contrast else "white"
+
     def show_trains(self, route_id: int):
         self.route = next(route for route in self.routes if route.id == route_id)
         self.controller.select_route(route_id)
@@ -598,8 +766,8 @@ class TramUI:
 
         tk = self.tk
         ttk = self.ttk
-        controls = tk.Frame(self.root, background="#f3f5f7", padx=10, pady=2)
-        controls.pack(fill="x")
+        controls = self._card(self.root, padx=10, pady=8)
+        controls.pack(fill="x", padx=12, pady=(2, 6))
 
         endpoints = route_direction_destination_ids(self.route)
         options = {"Alle Richtungen": None}
@@ -607,32 +775,32 @@ class TramUI:
             options[f"Nach {_station_name(self.route, station_id)}"] = station_id
         self._filter_buttons = {}
         for label, direction_id in options.items():
-            button = tk.Button(
+            button = self._action_button(
                 controls,
                 text=label,
                 command=lambda selected_id=direction_id: self._select_direction(selected_id),
+                variant="secondary",
                 font=("TkDefaultFont", 13, "bold"),
-                padx=6,
-                pady=9,
+                padx=10,
+                pady=11,
                 wraplength=230,
-                relief="raised",
-                bd=2,
             )
-            button.pack(side="left", fill="both", expand=True, padx=4, pady=3)
+            button.pack(side="left", fill="both", expand=True, padx=4, pady=2)
             self._filter_buttons[direction_id] = button
         self._update_filter_buttons()
 
-        table_frame = tk.Frame(self.root, padx=10, pady=6)
-        table_frame.pack(fill="both", expand=True)
+        table_frame = self._card(self.root, padx=8, pady=8)
+        table_frame.pack(fill="both", expand=True, padx=12, pady=(2, 8))
         self._build_train_table(table_frame, ttk)
 
         self._empty_label = tk.Label(
             self.root,
             text="Es sind aktuell keine Bahnen verfügbar.",
-            background="#f3f5f7",
-            font=("TkDefaultFont", 14),
+            background=UI_COLORS["page"],
+            foreground=UI_COLORS["muted"],
+            font=("TkDefaultFont", 15),
         )
-        self._empty_label.pack(anchor="w", padx=12, pady=(0, 8))
+        self._empty_label.pack(anchor="w", padx=18, pady=(0, 10))
         self._row_trains = {}
         self._row_connections = {}
         self._refresh_train_rows()
@@ -658,23 +826,8 @@ class TramUI:
         self._tree.column("arrival", width=81, anchor="center", stretch=False)
         self._tree.column("action", width=134, anchor="center", stretch=False)
         self._tree.bind("<Configure>", self._resize_train_columns, add="+")
-        style = ttk.Style()
-        style.configure(
-            "Touch.Treeview",
-            rowheight=72,
-            font=("TkDefaultFont", 14),
-            background="#ffffff",
-            fieldbackground="#ffffff",
-            foreground="#263238",
-        )
-        style.map(
-            "Touch.Treeview",
-            background=[("selected", "#246c98")],
-            foreground=[("selected", "white")],
-        )
-        style.configure("Touch.Treeview.Heading", font=("TkDefaultFont", 13, "bold"))
-        self._tree.tag_configure("row_even", background="#ffffff")
-        self._tree.tag_configure("row_odd", background="#eaf1f6")
+        self._tree.tag_configure("row_even", background=UI_COLORS["surface"])
+        self._tree.tag_configure("row_odd", background=UI_COLORS["surface_alt"])
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=self._tree.yview)
         self._tree.configure(yscrollcommand=scrollbar.set)
         self._tree.pack(side="left", fill="both", expand=True)
@@ -712,16 +865,25 @@ class TramUI:
 
     def _update_filter_buttons(self):
         selected_background = (
-            self._color(self.route.color) if self.route is not None else "#2f6f9f"
+            self._color(self.route.color)
+            if self.route is not None
+            else UI_COLORS["selected"]
         )
         for direction_id, button in self._filter_buttons.items():
             selected = direction_id == self.direction_id
+            active_background = (
+                selected_background
+                if selected
+                else UI_COLORS["selected_soft"]
+            )
             button.configure(
-                background=selected_background if selected else "#e2e7ec",
-                foreground="white" if selected else "#263238",
-                activebackground=selected_background if selected else "#d2dbe3",
-                activeforeground="white" if selected else "#263238",
-                relief="sunken" if selected else "raised",
+                background=selected_background if selected else UI_COLORS["surface_alt"],
+                foreground="white" if selected else UI_COLORS["text"],
+                activebackground=active_background,
+                activeforeground="white" if selected else UI_COLORS["text"],
+                highlightbackground=(
+                    selected_background if selected else UI_COLORS["border"]
+                ),
             )
 
     def _refresh_train_rows(self):
@@ -849,35 +1011,52 @@ class TramUI:
         self._refresh_detail()
 
     def _build_detail_content(self):
-        content = self.tk.Frame(self.root, background="#f3f5f7", padx=18, pady=12)
+        content = self.tk.Frame(
+            self.root,
+            background=UI_COLORS["page"],
+            padx=14,
+            pady=8,
+        )
         content.pack(fill="both", expand=True)
+        summary_card = self._card(content, padx=16, pady=12)
+        summary_card.pack(fill="x", pady=(0, 8))
         self._detail_labels = {}
         for key in ("direction", "times", "delay", "current", "next"):
             label = self.tk.Label(
-                content,
-                background="#f3f5f7",
-                font=("TkDefaultFont", 17 if key in ("delay", "current") else 16),
+                summary_card,
+                background=UI_COLORS["surface"],
+                foreground=(
+                    UI_COLORS["text"]
+                    if key != "next"
+                    else UI_COLORS["muted"]
+                ),
+                font=(
+                    "TkDefaultFont",
+                    17 if key in ("delay", "current") else 15,
+                    "bold" if key in ("delay", "current") else "normal",
+                ),
                 anchor="w",
                 justify="left",
                 wraplength=740,
             )
-            label.pack(fill="x", pady=2)
+            label.pack(fill="x", pady=3)
             self._detail_labels[key] = label
 
-        stops_frame = self.tk.Frame(content, background="#f3f5f7")
-        stops_frame.pack(fill="both", expand=True, pady=(4, 0))
+        stops_frame = self._card(content, padx=12, pady=10)
+        stops_frame.pack(fill="both", expand=True, pady=(0, 2))
         self._detail_section_label = self.tk.Label(
             stops_frame,
             text="Haltestellen · Ankunft und Abfahrt",
-            background="#f3f5f7",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
             font=("TkDefaultFont", 15, "bold"),
             anchor="w",
         )
-        self._detail_section_label.pack(fill="x", pady=(0, 3))
+        self._detail_section_label.pack(fill="x", pady=(0, 8))
         self._detail_closure_label = self.tk.Label(
             stops_frame,
-            background="#fff9c4",
-            foreground="#7a5a00",
+            background=UI_COLORS["warning_bg"],
+            foreground=UI_COLORS["warning_text"],
             font=("TkDefaultFont", 14, "bold"),
             anchor="w",
             justify="left",
@@ -903,38 +1082,32 @@ class TramUI:
             self._resize_detail_columns,
             add="+",
         )
-        style = self.ttk.Style()
-        style.configure(
-            "Detail.Treeview",
-            rowheight=38,
-            font=("TkDefaultFont", 13),
-            background="#ffffff",
-            fieldbackground="#ffffff",
-            foreground="#263238",
-        )
-        style.configure("Detail.Treeview.Heading", font=("TkDefaultFont", 13, "bold"))
         self._detail_stop_tree.tag_configure(
             "group",
-            background="#e2e7ec",
-            foreground="#263238",
+            background=UI_COLORS["surface_alt"],
+            foreground=UI_COLORS["text"],
             font=("TkDefaultFont", 13, "bold"),
         )
         self._detail_stop_tree.tag_configure(
             "current",
-            background="#c8f2d3",
-            foreground="#12602d",
+            background=UI_COLORS["success_bg"],
+            foreground=UI_COLORS["success_text"],
             font=("TkDefaultFont", 14, "bold"),
         )
         self._detail_stop_tree.tag_configure(
             "closure",
-            background="#fff9c4",
-            foreground="#7a5a00",
+            background=UI_COLORS["warning_bg"],
+            foreground=UI_COLORS["warning_text"],
         )
-        self._detail_stop_tree.tag_configure("row", background="#ffffff")
+        self._detail_stop_tree.tag_configure(
+            "row",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+        )
         self._detail_stop_tree.tag_configure(
             "unavailable",
-            background="#ffffff",
-            foreground="#59636e",
+            background=UI_COLORS["surface"],
+            foreground=UI_COLORS["muted"],
         )
         scrollbar = self.ttk.Scrollbar(
             stops_frame,
@@ -1153,7 +1326,9 @@ class TramUI:
             delay = timedelta(seconds=connection.delay_seconds)
             self._detail_labels["delay"].configure(
                 text=f"Verspätung: {self._format_delay(delay)}",
-                foreground="#b33b2e" if delay else "#267246",
+                foreground=(
+                    UI_COLORS["danger"] if delay else UI_COLORS["success_text"]
+                ),
             )
             self._detail_labels["direction"].configure(
                 text=f"Fahrtrichtung: {destination}"
@@ -1214,7 +1389,11 @@ class TramUI:
         )
         self._detail_labels["delay"].configure(
             text=f"Verspätung: {self._format_delay(info.current_delay)}",
-            foreground="#b33b2e" if info.current_delay else "#267246",
+            foreground=(
+                UI_COLORS["danger"]
+                if info.current_delay
+                else UI_COLORS["success_text"]
+            ),
         )
         self._detail_labels["direction"].configure(
             text=f"Fahrtrichtung: {info.direction_destination}"

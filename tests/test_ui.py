@@ -13,6 +13,7 @@ from ui import (
     StopTimeline,
     StopTimelineEntry,
     TramUI,
+    UI_COLORS,
     connection_stop_timeline,
     filter_connections,
     filter_trains,
@@ -65,6 +66,53 @@ def make_train(train_id, direction=1, cyclic=False):
     return train
 
 
+class UIThemeTests(unittest.TestCase):
+    def test_shared_styles_use_the_light_touchscreen_theme(self):
+        app = TramUI.__new__(TramUI)
+        app.root = MagicMock()
+        app.ttk = MagicMock()
+
+        app._configure_styles()
+
+        style = app.ttk.Style.return_value
+        style.configure.assert_any_call(
+            "App.TCombobox",
+            font=("TkDefaultFont", 16),
+            padding=8,
+            fieldbackground=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+        )
+        style.configure.assert_any_call(
+            "Touch.Treeview",
+            rowheight=72,
+            font=("TkDefaultFont", 14),
+            background=UI_COLORS["surface"],
+            fieldbackground=UI_COLORS["surface"],
+            foreground=UI_COLORS["text"],
+            borderwidth=0,
+            relief="flat",
+        )
+
+    def test_primary_action_buttons_keep_large_flat_touch_targets(self):
+        app = TramUI.__new__(TramUI)
+        app.tk = MagicMock()
+        command = MagicMock()
+
+        app._action_button(
+            MagicMock(),
+            "Speichern",
+            command,
+            variant="primary",
+        )
+
+        options = app.tk.Button.call_args.kwargs
+        self.assertEqual(options["background"], UI_COLORS["primary"])
+        self.assertEqual(options["foreground"], "white")
+        self.assertEqual(options["pady"], 10)
+        self.assertEqual(options["relief"], "flat")
+        self.assertEqual(options["command"], command)
+
+
 class RouteSelectionUITests(unittest.TestCase):
     def test_route_button_labels_closure_and_regular_routes(self):
         closed_route = make_route()
@@ -112,7 +160,7 @@ class RouteSelectionUITests(unittest.TestCase):
         )
         self.assertEqual(app.screen, "closure")
 
-    def test_orange_route_button_uses_white_text(self):
+    def test_orange_route_button_uses_high_contrast_text(self):
         route = make_route()
         route.color = (255, 128, 0)
         app = TramUI.__new__(TramUI)
@@ -128,8 +176,11 @@ class RouteSelectionUITests(unittest.TestCase):
 
         button_options = app.tk.Button.call_args.kwargs
         self.assertEqual(button_options["background"], "#ff8000")
-        self.assertEqual(button_options["foreground"], "white")
-        self.assertEqual(button_options["activeforeground"], "white")
+        self.assertEqual(button_options["foreground"], UI_COLORS["text"])
+        self.assertEqual(button_options["activeforeground"], UI_COLORS["text"])
+
+    def test_dark_route_color_uses_light_contrast_text(self):
+        self.assertEqual(TramUI._contrast_text_color((0, 0, 255)), "white")
 
     def test_train_plan_header_shows_closure_next_to_route_name(self):
         route = make_route()
