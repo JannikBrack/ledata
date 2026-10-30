@@ -677,7 +677,7 @@ class Controller():
                 min(first_position, second_position) + 1,
                 max(first_position, second_position),
             ):
-                self.set_pixel(position, Color(255, 128, 0))
+                self.set_pixel(position, Color(255, 255, 0))
 
     def set_pixel(self, position, color):
         if 0 <= position < self.strip.numPixels():

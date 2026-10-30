@@ -513,8 +513,8 @@ class RouteConfigTests(unittest.TestCase):
         self.assertEqual(
             route["led_layout"],
             [
-                7, 9, 8, 5, 8, 10, 6, 14, 8, 8, 7,
-                7, 7, 9, 5, 9, 3, 3, 3, 2, 3, 1,
+                7, 8, 7, 5, 7, 9, 6, 13, 7, 8, 7,
+                7, 7, 8, 5, 8, 3, 3, 3, 2, 3, 1,
             ],
         )
         self.assertEqual(len(route["stations"]), len(route["led_layout"]))
@@ -530,7 +530,12 @@ class RouteConfigTests(unittest.TestCase):
         self.assertTrue(
             all(0 <= position < meta["led"]["count"] for position in positions)
         )
-        self.assertEqual(route["color"], [255, 255, 0])
+        self.assertEqual(route["color"], [255, 128, 0])
+        line_one = next(route for route in meta["routes"] if route["id"] == 0)
+        self.assertEqual(
+            route["stations"][-1]["position"],
+            line_one["stations"][-1]["position"],
+        )
         self.assertEqual(
             [station["trias_ref"] for station in route["stations"]],
             [

@@ -403,7 +403,11 @@ class TramUI:
                 padx=6,
                 pady=6,
             )
-            text_color = "black" if route.color == (255, 255, 0) else "white"
+            text_color = (
+                "black"
+                if route.color in ((255, 255, 0), (255, 128, 0))
+                else "white"
+            )
             tk.Button(
                 card,
                 text=(
@@ -874,8 +878,8 @@ class TramUI:
         self._detail_section_label.pack(fill="x", pady=(0, 3))
         self._detail_closure_label = self.tk.Label(
             stops_frame,
-            background="#fff0d6",
-            foreground="#985400",
+            background="#fff9c4",
+            foreground="#7a5a00",
             font=("TkDefaultFont", 14, "bold"),
             anchor="w",
             justify="left",
@@ -925,8 +929,8 @@ class TramUI:
         )
         self._detail_stop_tree.tag_configure(
             "closure",
-            background="#fff0d6",
-            foreground="#985400",
+            background="#fff9c4",
+            foreground="#7a5a00",
         )
         self._detail_stop_tree.tag_configure("row", background="#ffffff")
         self._detail_stop_tree.tag_configure(

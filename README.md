@@ -35,7 +35,7 @@ regulären Endstationen zusammengeführt, wenn der Anschluss nach mindestens
 fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht
 als vollständige Verbindung; die echten Teilfahrten bleiben auf den LEDs
 getrennt sichtbar. Der gesperrte Streckenabschnitt wird auf dem LED-Streifen
-orange markiert.
+gelb markiert; Linie 3 leuchtet orange.
 
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
 nächsten Live-Start fragt die Anwendung im Terminal, ob die gespeicherte
