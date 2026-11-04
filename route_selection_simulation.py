@@ -23,7 +23,7 @@ class RouteSelectionSimulation:
         occupied_by_route = {}
         for route in self.routes:
             for train in route.trains:
-                if not train.trip.is_active(now):
+                if not train.is_visible(now):
                     continue
                 train.sync_to_time(route, now)
                 for position in train.occupied_positions():

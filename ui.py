@@ -740,9 +740,15 @@ class TramUI:
                 else "Es sind aktuell keine vollständigen Verbindungen verfügbar."
             )
         else:
+            now = datetime.now(timezone.utc)
+            available_trains = [
+                train
+                for train in self.route.trains
+                if not train.is_terminal_expired(now)
+            ]
             visible_items = filter_trains(
                 self.route,
-                self.route.trains,
+                available_trains,
                 self.direction_id,
             )
             self._refresh_train_table(visible_items)
@@ -1198,11 +1204,8 @@ class TramUI:
             ),
             None,
         )
-        if train is None:
-            for label in self._detail_labels.values():
-                label.configure(text="Bahn aktuell nicht verfügbar.")
-            self._refresh_detail_stop_table(None)
-            self._refresh_detail_closure_banner(None)
+        if train is None or train.is_terminal_expired(datetime.now(timezone.utc)):
+            self._return_to_train_selection()
             return
         info = train_info(self.route, train)
         timeline = train_stop_timeline(self.route, train)
@@ -1230,6 +1233,14 @@ class TramUI:
         )
         self._refresh_detail_closure_banner(None)
         self._refresh_detail_stop_table(timeline)
+
+    def _return_to_train_selection(self):
+        """Clear the selected-train LED filter and return to the route's list."""
+        if self.route is None:
+            return
+        route_id = self.route.id
+        self._detail_train_id = None
+        self.show_trains(route_id)
 
     def go_back(self):
         if self.screen == "detail" and self.route is not None:

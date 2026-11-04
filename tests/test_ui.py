@@ -257,6 +257,9 @@ class TrainInfoTests(unittest.TestCase):
     def test_detail_summary_shows_direction_times_delay_current_and_next_stop(self):
         train = make_train("journey-1")
         train.at_station = False
+        train.terminal_arrival_time = datetime.now(timezone.utc) + timedelta(
+            seconds=30
+        )
         route = make_route([train])
         app = TramUI.__new__(TramUI)
         app.screen = "detail"
@@ -288,6 +291,34 @@ class TrainInfoTests(unittest.TestCase):
             text="Nächstes Ziel: Diakoniekrankenhaus"
         )
         app._refresh_detail_closure_banner.assert_called_once_with(None)
+
+    def test_expired_live_train_returns_ui_to_train_selection(self):
+        train = make_train("expired-live", cyclic=False)
+        train.terminal_arrival_time = datetime.now(timezone.utc) - timedelta(
+            seconds=31
+        )
+        route = make_route([train])
+        app = TramUI.__new__(TramUI)
+        app.screen = "detail"
+        app.route = route
+        app.routes = [route]
+        app.controller = MagicMock()
+        app.root = MagicMock()
+        app.tk = MagicMock()
+        app.ttk = MagicMock()
+        app._detail_connection_id = None
+        app._detail_train_id = train.trip.id
+        app._clear = MagicMock()
+        app._header = MagicMock()
+        app._update_filter_buttons = MagicMock()
+        app._build_train_table = MagicMock()
+        app._refresh_train_rows = MagicMock()
+
+        app._refresh_detail()
+
+        self.assertEqual(app.screen, "trains")
+        self.assertIsNone(app._detail_train_id)
+        app.controller.select_train.assert_called_once_with(None)
 
     def test_delay_format_uses_minutes_and_marks_punctual_trains(self):
         self.assertEqual(TramUI._format_delay(timedelta(0)), "Pünktlich")
@@ -940,6 +971,41 @@ class ControllerTrainSelectionTests(unittest.TestCase):
         self.assertEqual(strip.getPixelColor(1), 0xFF0000)
         self.assertEqual(strip.getPixelColor(8), 0)
         self.assertEqual(strip.getPixelColor(7), 0)
+
+    def test_first_moving_frame_extends_from_station_toward_destination(self):
+        for direction, position, behind_station in ((1, 6, 4), (-1, 4, 6)):
+            with self.subTest(direction=direction):
+                train = make_train(
+                    f"moving-{direction}", direction=direction, cyclic=True
+                )
+                train.position = position
+                train.at_station = False
+                route = make_route([train])
+                strip = FakeStrip(15)
+                controller = Controller([route], strip)
+
+                controller.draw(route)
+
+                self.assertEqual(strip.getPixelColor(position), 0xFF0000)
+                self.assertEqual(strip.getPixelColor(5), 0xFF0000)
+                self.assertEqual(strip.getPixelColor(behind_station), 0)
+
+    def test_expired_selected_train_resets_led_filter_to_all_trains(self):
+        selected = make_train("selected-live", cyclic=False)
+        selected.terminal_arrival_time = datetime.now(timezone.utc) - timedelta(
+            seconds=31
+        )
+        other = make_train("other", cyclic=True)
+        other.position = 2
+        route = make_route([selected, other])
+        strip = FakeStrip(15)
+        controller = Controller([route], strip)
+        controller.select_train(route.id, selected.trip.id)
+
+        controller.draw(route)
+
+        self.assertIsNone(controller.selected_train)
+        self.assertEqual(strip.getPixelColor(2), 0xFF0000)
 
     def test_clearing_selection_restores_all_trains(self):
         first = make_train("first", cyclic=True)

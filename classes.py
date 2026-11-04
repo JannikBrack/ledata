@@ -12,6 +12,8 @@ from route_selection_simulation import RouteSelectionSimulation
 
 # Schrittweises Debug-Logging beim Bewegen (auf dem Pi sonst sehr laut)
 DEBUG = False
+LIVE_DEPARTURE_BUFFER_SECONDS = 1.0
+LIVE_TERMINAL_HOLD_SECONDS = 30.0
 
 logger = logging.getLogger(__name__)
 
@@ -178,9 +180,12 @@ class Trip():
         nach dem Ende steht der Zug haltend am ersten bzw. letzten Halt.
         """
         last = len(self.stops) - 1
+        departure_buffer = timedelta(
+            seconds=LIVE_DEPARTURE_BUFFER_SECONDS if not self.cyclic else 0.0
+        )
         if not self.cyclic:
             if now < self.arrival_at(0):
-                return 0, "haltend", now, self.departure_at(0)
+                return 0, "haltend", now, self.departure_at(0) + departure_buffer
             if now > self.departure_at(last):
                 return last, "haltend", self.arrival_at(last), now
 
@@ -190,18 +195,29 @@ class Trip():
             if now < arrival:
                 previous = index - 1
                 if previous < 0:
-                    begin = self.departure_at(last) + offset - self.cycle
+                    begin = (
+                        self.departure_at(last)
+                        + offset
+                        - self.cycle
+                        + departure_buffer
+                    )
                     return last, "fahrend", min(begin, arrival), arrival
-                return previous, "fahrend", self.departure_at(previous) + offset, arrival
-            if now < self.departure_at(index) + offset:
-                return index, "haltend", arrival, self.departure_at(index) + offset
+                return (
+                    previous,
+                    "fahrend",
+                    self.departure_at(previous) + offset + departure_buffer,
+                    arrival,
+                )
+            departure = self.departure_at(index) + offset
+            if now < departure + departure_buffer:
+                return index, "haltend", arrival, departure + departure_buffer
 
         if not self.cyclic:
             # innerhalb der letzten Haltezeit, aber nach der Ankunft
             return last, "haltend", self.arrival_at(last), self.departure_at(last)
 
         # nach der letzten Abfahrt faehrt der Zug zurueck zum Start des naechsten Zyklus
-        begin = self.departure_at(last) + offset
+        begin = self.departure_at(last) + offset + departure_buffer
         end = self.arrival_at(0) + offset + self.cycle
         # bei Verspaetung groesser als die Wendezeit bleibt keine Zeit fuer die Rueckfahrt
         return last, "fahrend", begin, max(begin, end)
@@ -248,6 +264,8 @@ class Train():
     at_station: bool # True while the train is standing in a station
     departure_time: datetime | None # geplante Abfahrtszeit am aktuellen Halt (UTC)
     arrival_time: datetime | None # geplante Ankunftszeit am naechsten Halt (UTC)
+    terminal_arrival_time: datetime | None # tatsaechliche/geschaetzte Ankunft am Live-Endhalt
+    terminal_station_id: int | None
 
     def __init__(self, id, trip) -> None:
         self.id = id
@@ -265,6 +283,8 @@ class Train():
         self.at_station = False
         self.departure_time = None
         self.arrival_time = None
+        self.terminal_arrival_time = None
+        self.terminal_station_id = None
 
     def __str__(self) -> str:
         return (
@@ -279,7 +299,47 @@ class Train():
             ")"
         )
 
-    def move(self, route):
+    def is_terminal_expired(self, now: datetime) -> bool:
+        """Whether a one-off live trip has completed its 30-second terminal hold."""
+        terminal_arrival = self.terminal_arrival_time
+        if terminal_arrival is None:
+            if self.trip.cyclic:
+                return False
+            terminal_arrival = self.trip.arrival_at(len(self.trip.stops) - 1)
+        if terminal_arrival is None:
+            return False
+        return now >= terminal_arrival + timedelta(
+            seconds=LIVE_TERMINAL_HOLD_SECONDS
+        )
+
+    def is_visible(self, now: datetime) -> bool:
+        """Whether this train should currently be rendered or offered in the UI."""
+        if self.terminal_arrival_time is not None:
+            return not self.is_terminal_expired(now)
+        if not self.trip.cyclic:
+            terminal_arrival = self.trip.arrival_at(len(self.trip.stops) - 1)
+            if now >= terminal_arrival:
+                return not self.is_terminal_expired(now)
+        return self.trip.is_active(now)
+
+    def _hold_at_terminal(self, route, arrival_time: datetime, station_id: int):
+        self.terminal_arrival_time = arrival_time
+        self.terminal_station_id = station_id
+        self.stop_index = len(self.trip.stops) - 1
+        self.next_index = self.stop_index
+        self.position = route.position_of_station(station_id)
+        self.target_position = self.position
+        self.distance = 0
+        self.at_station = True
+        self.departure_time = self.trip.departure_at(self.stop_index)
+        self.arrival_time = arrival_time
+        self.ticks_per_led = 1
+        self.ticks_to_move = 1
+
+    def move(self, route, now: datetime | None = None):
+        if self.terminal_arrival_time is not None:
+            return
+        now = now or datetime.now(timezone.utc)
         self.ticks_to_move -= 1
         if self.ticks_to_move > 0:
             return
@@ -291,8 +351,20 @@ class Train():
             # der naechste Halt ist erreicht -> Haltezeit und naechster Abschnitt
             self.stop_index = self.next_index
             self.at_station = True
+            if not self.trip.cyclic and self.stop_index == len(self.trip.stops) - 1:
+                self._hold_at_terminal(
+                    route,
+                    now,
+                    self.trip.stops[self.stop_index].station_id,
+                )
+                return
             self.plan_next_leg(route)
-            self.ticks_to_move += self.seconds_to_ticks(self.trip.dwell_seconds_at(self.stop_index))
+            departure_buffer = (
+                LIVE_DEPARTURE_BUFFER_SECONDS if not self.trip.cyclic else 0.0
+            )
+            self.ticks_to_move += self.seconds_to_ticks(
+                self.trip.dwell_seconds_at(self.stop_index) + departure_buffer
+            )
         else:
             self.at_station = False
             self.ticks_to_move = self.ticks_per_led
@@ -346,11 +418,45 @@ class Train():
         self.distance = abs(self.target_position - self.position)
         self.direction = 1 if self.target_position >= self.position else -1
         # Fahrzeit ergibt sich aus der Ankunftszeit am naechsten Halt
-        self.set_pace(max(0.0, (arrival - departure).total_seconds()), self.distance)
+        departure_buffer = (
+            LIVE_DEPARTURE_BUFFER_SECONDS if not trip.cyclic else 0.0
+        )
+        self.set_pace(
+            max(
+                0.0,
+                (
+                    arrival
+                    - departure
+                    - timedelta(seconds=departure_buffer)
+                ).total_seconds(),
+            ),
+            self.distance,
+        )
 
     def sync_to_time(self, route, now):
         """Setzt den Zug auf die Position, die zur aktuellen Uhrzeit gehoert."""
         trip = self.trip
+        if self.terminal_arrival_time is not None:
+            self._hold_at_terminal(
+                route,
+                self.terminal_arrival_time,
+                self.terminal_station_id
+                if self.terminal_station_id is not None
+                else trip.stops[-1].station_id,
+            )
+            return
+
+        if not trip.cyclic:
+            last_index = len(trip.stops) - 1
+            terminal_arrival = trip.arrival_at(last_index)
+            if now >= terminal_arrival:
+                self._hold_at_terminal(
+                    route,
+                    terminal_arrival,
+                    trip.stops[last_index].station_id,
+                )
+                return
+
         self.cycle_offset = trip.cycle_offset(now)
         index, state, begin, end = trip.locate(now)
         self.stop_index = index
@@ -369,6 +475,8 @@ class Train():
         progress = min(max(progress, 0.0), 1.0)
         steps = min(int(progress * span), max(span - 1, 0))
         self.position += steps * self.direction
+        # Keep showing only the station marker until the first LED step is real.
+        self.at_station = steps == 0
         remaining_leds = max(1, abs(self.target_position - self.position))
         self.set_pace(max(0.0, (end - now).total_seconds()), remaining_leds)
 
@@ -524,9 +632,9 @@ class Route():
         next_position = min(positions_ahead) if direction > 0 else max(positions_ahead)
         return abs(next_position - position)
 
-    def move_trains(self):
+    def move_trains(self, now: datetime | None = None):
         for train in self.trains:
-            train.move(self)
+            train.move(self, now)
 
 
 def train_direction_destination_id(route: Route, train: Train) -> int:
@@ -671,14 +779,28 @@ class Controller():
         now = datetime.now(timezone.utc)
         blink_on = self.is_blink_on()
         # Zuege ohne laufenden Umlauf (live: vor Start / nach Ende) nicht zeichnen
-        active_trains = [train for train in route.trains if train.trip.is_active(now)]
+        active_trains = [train for train in route.trains if train.is_visible(now)]
         if self.selected_train is not None:
             selected_route_id, selected_train_id = self.selected_train
             if route.id == selected_route_id:
-                active_trains = [
-                    train for train in active_trains
-                    if train.trip.id == selected_train_id
-                ]
+                selected = next(
+                    (
+                        train
+                        for train in route.trains
+                        if train.trip.id == selected_train_id
+                    ),
+                    None,
+                )
+                if selected is None or selected.is_terminal_expired(now):
+                    # Restore the full route rendering as soon as a selected
+                    # live journey has disappeared.
+                    self.selected_train = None
+                else:
+                    active_trains = [
+                        train
+                        for train in active_trains
+                        if train.trip.id == selected_train_id
+                    ]
             else:
                 active_trains = []
         elif self.selected_direction is not None:
@@ -781,9 +903,9 @@ class Controller():
                 eta,
             )
 
-    def _move_trains(self, route):
+    def _move_trains(self, route, now: datetime | None = None):
         previous_states = self._capture_arrival_states(route)
-        route.move_trains()
+        route.move_trains(now)
         self._log_arrival_transitions(route, previous_states)
 
     def _live_worker(self) -> None:
@@ -955,4 +1077,4 @@ class Controller():
 
 # Kontroller move requests (intervall mäßig) und der Zug macht die Valedierungen jeh nach dem ob er sich bewegen darf anhand der ausgerechneten 
 # led/time variable, welche berechnet wird um zu definieren wie lange der zug brauchen darf um an der nächsten haltestelle anzukommen
-# definierter Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks 
+# definierter Tickinterval 100 ms -> 1 Minute = 60 Sekunden = 60.000 Milisekunden = 600 Ticks

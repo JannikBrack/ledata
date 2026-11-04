@@ -66,13 +66,13 @@ class TripLocateTests(unittest.TestCase):
         index, state, begin, end = self.trip.locate(T0 - timedelta(seconds=30))
         self.assertEqual((index, state), (0, "haltend"))
         self.assertEqual(begin, T0 - timedelta(seconds=30))
-        self.assertEqual(end, T0 + timedelta(seconds=60))
+        self.assertEqual(end, T0 + timedelta(seconds=61))
         self.assertFalse(self.trip.is_active(T0 - timedelta(seconds=30)))
 
     def test_locate_mid_leg_is_fahrend_index_0(self):
         index, state, begin, end = self.trip.locate(T0 + timedelta(seconds=90))
         self.assertEqual((index, state), (0, "fahrend"))
-        self.assertEqual(begin, T0 + timedelta(seconds=60))
+        self.assertEqual(begin, T0 + timedelta(seconds=61))
         self.assertEqual(end, T0 + timedelta(seconds=120))
         self.assertTrue(self.trip.is_active(T0 + timedelta(seconds=90)))
 
@@ -80,7 +80,7 @@ class TripLocateTests(unittest.TestCase):
         index, state, begin, end = self.trip.locate(T0 + timedelta(seconds=130))
         self.assertEqual((index, state), (1, "haltend"))
         self.assertEqual(begin, T0 + timedelta(seconds=120))
-        self.assertEqual(end, T0 + timedelta(seconds=150))
+        self.assertEqual(end, T0 + timedelta(seconds=151))
 
     def test_locate_after_end_is_haltend_at_last_stop(self):
         index, state, begin, end = self.trip.locate(T0 + timedelta(seconds=300))
@@ -103,6 +103,31 @@ class TrainLiveTests(unittest.TestCase):
         self.assertTrue(0 < self.train.position < 5, self.train.position)
         self.assertEqual(self.train.direction, 1)
         self.assertFalse(self.train.at_station)
+
+    def test_live_train_stays_at_station_until_first_led_step(self):
+        self.train.sync_to_time(self.route, T0 + timedelta(seconds=151.1))
+
+        self.assertTrue(self.train.at_station)
+        self.assertEqual(self.train.position, 5)
+
+        self.train.sync_to_time(self.route, T0 + timedelta(seconds=163))
+
+        self.assertFalse(self.train.at_station)
+        self.assertEqual(self.train.position, 6)
+
+    def test_live_train_stays_at_terminal_for_30_seconds_then_expires(self):
+        terminal_arrival = T0 + timedelta(seconds=210)
+        self.train.sync_to_time(self.route, terminal_arrival)
+
+        self.assertTrue(self.train.at_station)
+        self.assertEqual(self.train.position, 10)
+        self.assertTrue(self.train.is_visible(terminal_arrival + timedelta(seconds=29)))
+        self.assertFalse(self.train.is_visible(terminal_arrival + timedelta(seconds=30)))
+
+        self.train.sync_to_time(self.route, terminal_arrival + timedelta(seconds=40))
+        self.train.move(self.route, terminal_arrival + timedelta(seconds=40))
+        self.assertEqual(self.train.position, 10)
+        self.assertEqual(self.train.terminal_arrival_time, terminal_arrival)
 
     def test_move_never_leaves_last_station(self):
         self.train.sync_to_time(self.route, T0 + timedelta(seconds=90))
