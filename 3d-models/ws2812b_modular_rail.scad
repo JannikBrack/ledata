@@ -3,30 +3,13 @@
 
 segment_length = 200;
 
-led_width = 10;
-led_height = 5;
-led_side_clearance = 1;
-base_thickness = 2;
-wall_thickness = 2.6;
-wall_height = 9.5;
+include "ws2812b_rail_common.scad";
+
 roof_slot_height = 1.5;
 roof_slot_bottom = 8;
 roof_slot_depth = 1.5;
-print_clearance = 0.25;
 
-hook_length = 5.5;
-hook_beam_width = 1.2;
-hook_beam_height = 1.0;
-hook_position_z = 4.9;
-hook_nose_length = 1.1;
-socket_length = 6.2;
-socket_throat_length = hook_length - hook_nose_length - 3 * print_clearance;
-
-channel_width = led_width + 2 * led_side_clearance;
-rail_width = channel_width + 2 * wall_thickness;
-rail_height = base_thickness + wall_height;
 groove_depth = roof_slot_depth + print_clearance;
-epsilon = 0.02;
 
 module rail_cross_section() {
     difference() {

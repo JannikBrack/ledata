@@ -13,22 +13,7 @@ bend_steps = 64;
 cap_end_clearance = 2;
 fill_led_channel = true;
 
-// Keep these values in sync with ws2812b_modular_rail.scad.
-led_width = 10;
-led_height = 5;
-led_side_clearance = 1;
-base_thickness = 2;
-wall_thickness = 2.6;
-wall_height = 9.5;
-print_clearance = 0.25;
-
-hook_length = 5.5;
-hook_beam_width = 1.2;
-hook_beam_height = 1.0;
-hook_position_z = 4.9;
-hook_nose_length = 1.1;
-socket_length = 6.2;
-socket_throat_length = hook_length - hook_nose_length - 3 * print_clearance;
+include "ws2812b_rail_common.scad";
 
 cap_thickness = 1.2;
 cap_side_clearance = 0.25;
@@ -37,9 +22,6 @@ cap_skirt_drop = 2.7;
 cap_latch_depth = 0.5;
 cap_latch_height = 0.8;
 
-channel_width = led_width + 2 * led_side_clearance;
-rail_width = channel_width + 2 * wall_thickness;
-rail_height = base_thickness + wall_height;
 cap_groove_z = rail_height - 2;
 cap_groove_height = cap_latch_height + 0.4;
 cap_latch_z = cap_groove_z + 0.2;
@@ -54,7 +36,6 @@ cap_latch_width = cap_latch_depth + cap_side_clearance;
 cap_print_latch_z = cap_thickness
     + rail_height - cap_latch_z - cap_latch_height;
 hook_center_offset = channel_width / 2 + wall_thickness - hook_beam_width / 2;
-epsilon = 0.02;
 
 // Choose the remaining straight length so the route endpoint is exactly the
 // requested Euclidean distance from the start.

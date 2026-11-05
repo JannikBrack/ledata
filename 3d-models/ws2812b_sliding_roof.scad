@@ -1,24 +1,19 @@
 // Flat, lengthwise-sliding cover for ws2812b_modular_rail.scad.
 // Match rail_length to the rail segment and export a 4 mm shorter cover.
 
+include "ws2812b_rail_common.scad";
+
 rail_length = 200;
 end_clearance = 2;
-print_clearance = 0.25;
 
-led_width = 10;
-led_side_clearance = 1;
-wall_thickness = 2.6;
 roof_slot_depth = 1.5;
 roof_slot_height = 1.5;
 roof_slot_bottom = 8;
-rail_base_thickness = 2;
-rail_wall_height = 9.5;
 
 cover_thickness = 1.2;
 cover_tab_thickness = 0.8;
 cover_side_clearance = 0.25;
 
-channel_width = led_width + 2 * led_side_clearance;
 groove_depth = roof_slot_depth + print_clearance;
 cover_length = rail_length - 2 * end_clearance;
 cover_body_width = channel_width - 2 * cover_side_clearance;
@@ -50,7 +45,7 @@ module roof_cross_section() {
 
 assert(rail_length > 2 * end_clearance,
     "rail_length must be greater than twice end_clearance");
-assert(roof_slot_bottom + roof_slot_height <= rail_base_thickness + rail_wall_height,
+assert(roof_slot_bottom + roof_slot_height <= rail_height,
     "The roof groove must remain inside the rail wall");
 assert(cover_tab_thickness + print_clearance <= roof_slot_height,
     "The roof tabs need clearance inside the rail grooves");

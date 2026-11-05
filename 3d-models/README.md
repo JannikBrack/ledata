@@ -11,7 +11,7 @@ Die Modelle sind für einen 10 mm breiten und bis zu 5 mm hohen WS2812B-Streifen
 - `ws2812b_90deg_elbow_rail.stl`: 90°-Eckschiene
 - `ws2812b_90deg_elbow_cap.stl`: von oben aufdrückbarer Deckel für das Eckstück
 
-Die vorhandenen STL-Dateien liegen flach und sind für das 256 × 256 × 256 mm große Druckvolumen der Bambu-Lab-P1-Reihe ausgelegt. Die `.scad`-Dateien sind die parametrisierbaren Quelldateien; für andere Längen `segment_length` beziehungsweise `rail_length` anpassen und neu exportieren.
+Die vorhandenen STL-Dateien liegen flach und sind für das 256 × 256 × 256 mm große Druckvolumen der Bambu-Lab-P1-Reihe ausgelegt. Die `.scad`-Dateien sind die parametrisierbaren Quelldateien; für andere Längen `segment_length` beziehungsweise `rail_length` anpassen und neu exportieren. Gemeinsame Maße und Verbinderparameter stehen zentral in `ws2812b_rail_common.scad`, damit gerade Schiene, Dach und Eckstück zusammenpassen.
 
 Der Verbinder ist auf `print_clearance = 0.25` mm ausgelegt. Für die federnden Haken ist PETG empfehlenswert. Vor dem Druck mehrerer Segmente zuerst ein kurzes Testsegment drucken und die Passung prüfen.
 
