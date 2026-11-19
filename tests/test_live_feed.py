@@ -513,8 +513,8 @@ class RouteConfigTests(unittest.TestCase):
         self.assertEqual(
             route["led_layout"],
             [
-                3, 2, 3, 3, 3, 8, 5, 8, 7, 7, 7,
-                8, 7, 13, 6, 9, 7, 5, 7, 8, 7, 1,
+                12, 10, 4, 4, 4, 5, 5, 12, 6, 8, 5,
+                6, 5, 9, 4, 8, 4, 5, 5, 6, 6, 1,
             ],
         )
         self.assertEqual(len(route["stations"]), len(route["led_layout"]))
@@ -643,7 +643,7 @@ class RouteConfigTests(unittest.TestCase):
         )
         self.assertEqual(
             route["led_layout"],
-            [2, 3, 5, 4, 5, 2, 9, 14, 8, 8, 7, 6, 5, 12, 13, 6, 5, 6, 7, 6, 1],
+            [4, 6, 8, 6, 9, 4, 7, 12, 6, 8, 5, 4, 4, 10, 13, 4, 5, 5, 7, 6, 1],
         )
         self.assertEqual(len(route["stations"]), len(route["led_layout"]))
         positions = [station["position"] for station in route["stations"]]
@@ -657,8 +657,8 @@ class RouteConfigTests(unittest.TestCase):
         self.assertEqual(
             positions,
             [
-                0, 2, 5, 10, 14, 19, 21, 30, 44, 52, 60,
-                67, 73, 78, 90, 103, 109, 114, 120, 127, 133,
+                0, 4, 10, 18, 24, 33, 37, 44, 56, 62, 70,
+                75, 79, 83, 93, 106, 110, 115, 120, 127, 133,
             ],
         )
         self.assertTrue(
@@ -730,7 +730,7 @@ class RouteConfigTests(unittest.TestCase):
         )
         self.assertEqual(
             route["led_layout"],
-            [10, 6, 10, 7, 5, 4, 7, 6, 8, 12, 4, 5, 7, 7, 1],
+            [9, 5, 8, 5, 5, 4, 5, 4, 8, 9, 4, 4, 5, 6, 1],
         )
         self.assertEqual(len(route["stations"]), len(route["led_layout"]))
         positions = [station["position"] for station in route["stations"]]
@@ -743,12 +743,12 @@ class RouteConfigTests(unittest.TestCase):
         )
         self.assertEqual(
             positions,
-            [0, 10, 16, 26, 33, 38, 42, 49, 55, 63, 75, 79, 84, 91, 98],
+            [0, 9, 14, 22, 27, 32, 36, 41, 45, 53, 62, 66, 70, 75, 81],
         )
         self.assertTrue(
             all(0 <= position < meta["led"]["count"] for position in positions)
         )
-        self.assertEqual(sum(route["led_layout"]), 99)
+        self.assertEqual(sum(route["led_layout"]), 82)
         self.assertEqual(route["color"], [0, 0, 255])
         self.assertEqual(
             route["trias"]["line_refs"],
@@ -793,7 +793,7 @@ class RouteConfigTests(unittest.TestCase):
         )
         self.assertEqual(
             route["led_layout"],
-            [13, 4, 9, 4, 14, 9, 14, 8, 8, 7, 5, 5, 4, 4, 4, 4, 4, 3, 1],
+            [11, 4, 9, 4, 9, 7, 12, 6, 8, 5, 4, 4, 5, 7, 8, 7, 8, 5, 1],
         )
         self.assertEqual(len(route["stations"]), len(route["led_layout"]))
         self.assertEqual(route["start_of_route"], 0)
@@ -801,23 +801,23 @@ class RouteConfigTests(unittest.TestCase):
             [station["position"] for station in route["stations"]],
             [
                 0,
-                13,
-                17,
-                26,
-                30,
+                11,
+                15,
+                24,
+                28,
+                37,
                 44,
-                53,
-                67,
+                56,
+                62,
+                70,
                 75,
+                79,
                 83,
-                90,
+                88,
                 95,
-                100,
-                104,
-                108,
-                112,
-                116,
-                120,
+                103,
+                110,
+                118,
                 123,
             ],
         )
@@ -838,6 +838,51 @@ class RouteConfigTests(unittest.TestCase):
             route["trias"]["origin_refs"],
             ["de:08311:30200", "de:08311:30400"],
         )
+
+    def test_shared_stations_align_and_keep_minimum_distance(self):
+        meta = json.loads(
+            (Path(__file__).resolve().parents[1] / "meta.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        # Ring-Halte, die auf einem linearen Streifen nicht deckungsgleich
+        # abgebildet werden koennen (siehe Linie 2/3 und Linie 4/5).
+        ring_exceptions = {"de:08311:30200", "de:08311:30411"}
+
+        occurrences = {}
+        positions_by_ref = {}
+        for route in meta["routes"]:
+            stations = route["stations"]
+            layout = route["led_layout"]
+            self.assertEqual(len(stations), len(layout))
+            positions = [
+                route["start_of_route"] + sum(layout[:index])
+                for index in range(len(stations))
+            ]
+            self.assertEqual(
+                [station["position"] for station in stations], positions
+            )
+            self.assertLessEqual(positions[-1], 133)
+            self.assertLessEqual(sum(layout), meta["led"]["count"])
+            for first, second, gap in zip(positions, positions[1:], layout[:-1]):
+                self.assertGreaterEqual(gap, 4)
+                self.assertLess(first, second)
+            for station in stations:
+                ref = station["trias_ref"]
+                occurrences[ref] = occurrences.get(ref, 0) + 1
+                positions_by_ref.setdefault(ref, set()).add(
+                    station["position"]
+                )
+
+        for ref, positions in positions_by_ref.items():
+            if occurrences[ref] > 1 and ref not in ring_exceptions:
+                self.assertEqual(
+                    len(positions),
+                    1,
+                    f"Geteilter Halt {ref} liegt auf mehreren Positionen: {positions}",
+                )
+        for ref in ring_exceptions:
+            self.assertGreater(len(positions_by_ref.get(ref, set())), 1)
 
 
 class RequestTests(unittest.TestCase):
