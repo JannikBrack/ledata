@@ -85,8 +85,15 @@ def train_stop_timeline(route: Route, train: Train) -> StopTimeline:
     upcoming = entries[current_index + 1:]
     past = entries[:current_index]
     if train.trip.cyclic and next_index == 0 and current_index == len(stops) - 1:
-        upcoming = entries[:1]
-        past = entries[1:current_index]
+        if stops[0].station_id == stops[-1].station_id:
+            # Voller Rundkurs: die Startendstation ist zugleich das Ziel der
+            # Rueckfahrt und darf nicht doppelt als kommender Halt erscheinen.
+            upcoming = ()
+            past = entries[:current_index]
+            next_name = "Ziel erreicht"
+        else:
+            upcoming = entries[:1]
+            past = entries[1:current_index]
 
     current_name = entries[current_index].name
     current_position = (
@@ -249,12 +256,60 @@ def train_info(route: Route, train: Train) -> TrainInfo:
         if reported_delay is not None
         else train.trip.delay_at(train.stop_index).total_seconds()
     )
+
+    if train.trip.cyclic and route.stations:
+        first_station_id = route.stations[0].id
+        last_station_id = route.stations[-1].id
+        if destination_id == last_station_id:
+            origin_id = first_station_id
+            start_index = next(
+                (
+                    index
+                    for index, stop in enumerate(stops)
+                    if stop.station_id == origin_id
+                ),
+                0,
+            )
+            end_index = next(
+                (
+                    index
+                    for index, stop in enumerate(stops)
+                    if stop.station_id == destination_id
+                ),
+                len(stops) - 1,
+            )
+        else:
+            origin_id = last_station_id
+            start_index = next(
+                (
+                    index
+                    for index, stop in enumerate(stops)
+                    if stop.station_id == origin_id
+                ),
+                0,
+            )
+            end_index = max(
+                (
+                    index
+                    for index, stop in enumerate(stops)
+                    if stop.station_id == destination_id
+                ),
+                default=len(stops) - 1,
+            )
+        departure = train.trip.departure_at(start_index) + offset
+        arrival = train.trip.arrival_at(end_index) + offset
+    else:
+        origin_id = stops[0].station_id
+        destination_id = stops[-1].station_id
+        departure = train.trip.departure_at(0) + offset
+        arrival = train.trip.arrival_at(len(stops) - 1) + offset
+
     return TrainInfo(
         train_id=train.trip.id,
-        origin=_station_name(route, stops[0].station_id),
-        destination=_station_name(route, stops[-1].station_id),
-        departure=train.trip.departure_at(0) + offset,
-        arrival=train.trip.arrival_at(len(stops) - 1) + offset,
+        origin=_station_name(route, origin_id),
+        destination=_station_name(route, destination_id),
+        departure=departure,
+        arrival=arrival,
         current_delay=timedelta(seconds=max(0.0, delay_seconds)),
         position=train_position(route, train),
         direction_destination=_station_name(route, destination_id),
@@ -330,6 +385,7 @@ class TramUI:
         self._detail_connection_id: str | None = None
         self._detail_labels = {}
         self._detail_stop_tree = None
+        self._settings_window = None
 
         self.root.title("Straßenbahn-Anzeige")
         self.root.attributes("-fullscreen", True)
@@ -343,6 +399,138 @@ class TramUI:
     def _clear(self):
         for child in self.root.winfo_children():
             child.destroy()
+
+    def _data_mode(self) -> str:
+        return getattr(self.controller, "data_mode", "live")
+
+    def _is_live_mode(self) -> bool:
+        return self._data_mode() != "simulation"
+
+    def show_settings(self):
+        """Einstellungs-Popup fuer Live-Daten und Simulation."""
+        tk = self.tk
+        if self._settings_window is not None:
+            try:
+                self._settings_window.destroy()
+            except tk.TclError:
+                pass
+            self._settings_window = None
+
+        window = tk.Toplevel(self.root)
+        self._settings_window = window
+        window.title("Einstellungen")
+        window.configure(background="#f3f5f7")
+        window.transient(self.root)
+        window.resizable(False, False)
+        window.grab_set()
+
+        current_mode = self._data_mode()
+        body = tk.Frame(window, background="#f3f5f7", padx=22, pady=18)
+        body.pack(fill="both", expand=True)
+        tk.Label(
+            body,
+            text="Einstellungen",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 20, "bold"),
+            anchor="w",
+        ).pack(fill="x", pady=(0, 12))
+        tk.Label(
+            body,
+            text="Datenquelle",
+            background="#f3f5f7",
+            font=("TkDefaultFont", 16, "bold"),
+            anchor="w",
+        ).pack(fill="x", pady=(0, 8))
+
+        for mode, label, description in (
+            ("live", "Live-Daten", "Echtzeit aus der TRIAS-API"),
+            (
+                "simulation",
+                "Simulation",
+                "4 Bahnen je Linie · keine Baustellen",
+            ),
+        ):
+            selected = mode == current_mode
+            button = tk.Button(
+                body,
+                text=f"{label}\n{description}",
+                command=lambda selected_mode=mode: self._apply_data_mode(
+                    selected_mode
+                ),
+                font=("TkDefaultFont", 16, "bold" if selected else "normal"),
+                justify="left",
+                anchor="w",
+                wraplength=430,
+                padx=14,
+                pady=12,
+                relief="sunken" if selected else "raised",
+                bd=2,
+                background="#dce9f2" if selected else "#ffffff",
+                activebackground="#c9dceb",
+            )
+            button.pack(fill="x", pady=5)
+
+        tk.Button(
+            body,
+            text="Schließen",
+            command=self._close_settings,
+            font=("TkDefaultFont", 15, "bold"),
+            padx=14,
+            pady=10,
+        ).pack(anchor="e", pady=(14, 0))
+        window.bind("<Escape>", lambda _event: self._close_settings())
+        window.protocol("WM_DELETE_WINDOW", self._close_settings)
+        window.lift()
+
+        try:
+            self.root.update_idletasks()
+            width, height = 560, 380
+            x = self.root.winfo_rootx() + max(
+                0, (self.root.winfo_width() - width) // 2
+            )
+            y = self.root.winfo_rooty() + max(
+                0, (self.root.winfo_height() - height) // 3
+            )
+            window.geometry(f"{width}x{height}+{x}+{y}")
+        except tk.TclError:
+            pass
+
+    def _close_settings(self):
+        window = self._settings_window
+        self._settings_window = None
+        if window is not None:
+            try:
+                window.grab_release()
+                window.destroy()
+            except self.tk.TclError:
+                pass
+
+    def _apply_data_mode(self, mode: str):
+        if mode == self._data_mode():
+            self._close_settings()
+            return
+        direction_id = self.direction_id
+        try:
+            self.controller.set_data_mode(mode)
+        except Exception as exc:  # noqa: BLE001 - UI-Fehler direkt anzeigen
+            self.messagebox.showerror(
+                "Modus konnte nicht gewechselt werden",
+                str(exc),
+                parent=self.root,
+            )
+            return
+        self._close_settings()
+        self.controller.select_train(None)
+        self._detail_train_id = None
+        self._detail_connection_id = None
+        if self.screen == "detail" and self.route is not None:
+            self.show_trains(self.route.id)
+        elif self.screen == "trains" and self.route is not None:
+            self.show_trains(self.route.id)
+            if direction_id is not None:
+                self._select_direction(direction_id)
+        else:
+            self.show_routes()
 
     def _header(self, title: str, back_label: str | None = None):
         tk = self.tk
@@ -372,6 +560,22 @@ class TramUI:
             padx=12,
             pady=11,
         ).pack(side="right")
+        tk.Button(
+            header,
+            text="⚙",
+            command=self.show_settings,
+            font=("TkDefaultFont", 17, "bold"),
+            padx=12,
+            pady=7,
+        ).pack(side="right", padx=(0, 8))
+        if self._is_live_mode():
+            tk.Label(
+                header,
+                text="● Live",
+                foreground="#267246",
+                background="#f3f5f7",
+                font=("TkDefaultFont", 13, "bold"),
+            ).pack(side="right", padx=(0, 12))
 
     def show_routes(self):
         self.controller.select_route(None)
@@ -405,13 +609,12 @@ class TramUI:
                 pady=6,
             )
             text_color = "black" if route.color == (255, 255, 0) else "white"
+            route_label = route.name
+            if self._is_live_mode() and route.closed_section:
+                route_label = f"{route.name} · ⚠ Baustelle"
             tk.Button(
                 card,
-                text=(
-                    f"{route.name} · ⚠ Baustelle"
-                    if route.closed_section
-                    else route.name
-                ),
+                text=route_label,
                 command=lambda route_id=route.id: self.show_trains(route_id),
                 background=self._color(route.color),
                 foreground=text_color,
@@ -422,7 +625,7 @@ class TramUI:
                 pady=12,
                 wraplength=320,
             ).pack(fill="both", expand=True)
-            if self.closure_store is not None:
+            if self.closure_store is not None and self._is_live_mode():
                 tk.Button(
                     card,
                     text=(
@@ -441,6 +644,9 @@ class TramUI:
             body.grid_rowconfigure(row, weight=1)
 
     def show_closure_editor(self, route_id: int):
+        if not self._is_live_mode():
+            self.show_routes()
+            return
         self.controller.set_route_selection_preview_enabled(False)
         route = next(route for route in self.routes if route.id == route_id)
         self.route = route
@@ -589,11 +795,9 @@ class TramUI:
         self.screen = "trains"
         self.direction_id = None
         self._clear()
-        route_title = (
-            f"{self.route.name} · ⚠ Baustelle"
-            if self.route.closed_section
-            else self.route.name
-        )
+        route_title = self.route.name
+        if self._is_live_mode() and self.route.closed_section:
+            route_title = f"{self.route.name} · ⚠ Baustelle"
         self._header(route_title, "Linien")
 
         tk = self.tk
@@ -727,7 +931,7 @@ class TramUI:
     def _refresh_train_rows(self):
         if self.screen != "trains" or self.route is None:
             return
-        if self.route.closed_section is not None:
+        if self._is_live_mode() and self.route.closed_section is not None:
             visible_items = filter_connections(
                 self.route.connections,
                 self.direction_id,

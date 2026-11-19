@@ -655,6 +655,8 @@ class Controller():
     blink_interval: int = 800 # in ms | on/off time of a train standing in a station
     resync_interval_seconds: float = 60.0 # wie oft die Zuege gegen die UTC-Uhr abgeglichen werden
     trip_source: Callable[..., dict[int, list[Trip] | RouteLiveData]] | None = None
+    simulation_source: Callable[..., dict[int, list[Trip] | RouteLiveData]] | None = None
+    data_mode: str = "live"
     live_refresh_seconds: float = 30.0 # Abstand der Live-Abfragen in Sekunden
     ticks: int = 0
     strip: PixelStrip
@@ -672,6 +674,10 @@ class Controller():
         self.ticks = 0
         self._live_queue = queue.Queue()
         self._live_thread = None
+        self._live_epoch = 0
+        self._suspended_closures = {}
+        self.data_mode = "live"
+        self.simulation_source = None
         self.selected_train = None
         self.selected_direction = None
         self.selected_route_id = None
@@ -687,6 +693,75 @@ class Controller():
         """Enable route-gated rendering and live polling for the touchscreen UI."""
         self.route_selection_required = True
         self.select_route(None)
+
+    @property
+    def is_simulation(self) -> bool:
+        return self.data_mode == "simulation"
+
+    def set_data_mode(self, mode: str):
+        """Wechselt zwischen Live-Daten und lokaler Simulation.
+
+        Der Wechsel ist sofort wirksam: Die Simulation wird direkt angewendet,
+        waehrend laufende Live-Antworten ueber die Epoche verworfen werden.
+        """
+        if mode not in {"live", "simulation"}:
+            raise ValueError(f"Unknown data mode: {mode}")
+        if mode == "simulation" and self.simulation_source is None:
+            raise ValueError("No simulation source configured")
+
+        with self._selection_lock:
+            if self.data_mode == mode:
+                return
+            now = datetime.now(timezone.utc)
+            minute_value = round(60000 / self.tickinterval)
+            self.data_mode = mode
+            self._live_epoch += 1
+            self._selection_changed.set()
+
+            if mode == "simulation":
+                snapshot = self.simulation_source(now)
+                self._suspended_closures = {
+                    route.id: route.closed_section for route in self.routes
+                }
+                for route in self.routes:
+                    route.set_closed_section(None)
+                    self._apply_route_data(
+                        route,
+                        snapshot.get(route.id),
+                        now,
+                        minute_value,
+                    )
+            else:
+                for route in self.routes:
+                    route.set_closed_section(
+                        self._suspended_closures.get(route.id)
+                    )
+                self._suspended_closures = {}
+                self._clear_route_data(now, minute_value)
+                self.selected_train = None
+
+            if self.render_enabled:
+                self.reset_strip()
+                self.strip.show()
+
+    def _apply_route_data(self, route, route_data, now, minute_value):
+        if route_data is None:
+            route.set_trips([], now, minute_value)
+            route.connections = []
+            return
+        if isinstance(route_data, RouteLiveData):
+            trips = list(route_data.trips)
+            connections = list(route_data.connections)
+        else:
+            trips = list(route_data)
+            connections = []
+        route.set_trips(trips, now, minute_value)
+        route.connections = connections
+
+    def _clear_route_data(self, now, minute_value):
+        for route in self.routes:
+            route.set_trips([], now, minute_value)
+            route.connections = []
 
     def set_route_selection_preview_enabled(self, enabled: bool):
         """Enable the isolated preview only while the UI shows route selection."""
@@ -706,12 +781,10 @@ class Controller():
             self._selection_changed.set()
             if not enabled:
                 self._route_selection_simulation.stop()
-                if self.trip_source is not None:
+                if self.data_mode == "live" and self.trip_source is not None:
                     now = datetime.now(timezone.utc)
                     minute_value = round(60000 / self.tickinterval)
-                    for route in self.routes:
-                        route.set_trips([], now, minute_value)
-                        route.connections = []
+                    self._clear_route_data(now, minute_value)
             if self.render_enabled:
                 self.reset_strip()
                 self.strip.show()
@@ -734,12 +807,14 @@ class Controller():
                 self.reset_strip()
                 self.strip.show()
         self._selection_changed.set()
-        if self.route_selection_required and self.trip_source is not None:
+        if (
+            self.route_selection_required
+            and self.trip_source is not None
+            and self.data_mode == "live"
+        ):
             now = datetime.now(timezone.utc)
             minute_value = round(60000 / self.tickinterval)
-            for route in self.routes:
-                route.set_trips([], now, minute_value)
-                route.connections = []
+            self._clear_route_data(now, minute_value)
 
     def select_train(self, route_id: int | None, train_id: str | int | None = None):
         """Limit rendering to one train; a missing selection clears that limit."""
@@ -830,7 +905,7 @@ class Controller():
             for position in train.occupied_positions():
                 self.set_pixel(position, Color(*route.color))
 
-        if route.closed_section is not None:
+        if route.closed_section is not None and not self.is_simulation:
             first_position = route.position_of_station(route.closed_section[0])
             second_position = route.position_of_station(route.closed_section[1])
             for position in range(
@@ -914,17 +989,26 @@ class Controller():
         if trip_source is None:
             return
         while not self.stopped:
+            if self.data_mode != "live":
+                # Im Simulationsmodus werden keine Live-Daten abgefragt.
+                self._selection_changed.wait(timeout=0.5)
+                self._selection_changed.clear()
+                continue
+
             selected_route_id = None
             selection_generation = None
+            preview_enabled = False
             if self.route_selection_required:
-                self._selection_changed.clear()
                 with self._selection_lock:
                     selected_route_id = self.selected_route_id
                     selection_generation = self._selection_generation
                     preview_enabled = self.route_selection_preview_enabled
                 if selected_route_id is None and not preview_enabled:
                     self._selection_changed.wait(timeout=0.1)
+                    self._selection_changed.clear()
                     continue
+
+            epoch = self._live_epoch
             try:
                 now = datetime.now(timezone.utc)
                 if self.route_selection_required:
@@ -932,67 +1016,82 @@ class Controller():
                 else:
                     snapshot = trip_source(now)
                 if snapshot is not None:
-                    if self.route_selection_required:
-                        with self._selection_lock:
-                            if (
-                                self.selected_route_id == selected_route_id
-                                and self._selection_generation == selection_generation
-                            ):
+                    with self._selection_lock:
+                        if self.data_mode == "live" and epoch == self._live_epoch:
+                            if self.route_selection_required:
+                                if (
+                                    self.selected_route_id == selected_route_id
+                                    and self._selection_generation
+                                    == selection_generation
+                                    and (
+                                        selected_route_id is not None
+                                        or self.route_selection_preview_enabled
+                                    )
+                                ):
+                                    self._live_queue.put(
+                                        (
+                                            epoch,
+                                            selection_generation,
+                                            snapshot,
+                                        )
+                                    )
+                            else:
                                 self._live_queue.put(
-                                    (selection_generation, snapshot)
+                                    (epoch, None, snapshot)
                                 )
-                    else:
-                        self._live_queue.put(snapshot)
             except Exception:
                 # Fehler beim Abruf: alte Zuege bleiben einfach stehen
                 logger.exception("Live-Fahrplandaten konnten nicht geladen werden")
             self._selection_changed.wait(timeout=self.live_refresh_seconds)
+            self._selection_changed.clear()
 
     def _drain_live_queue(self, minute_value: int) -> None:
         """Wendet die zuletzt eingetroffenen Live-Umlaeufe an (ohne zu blockieren)."""
+        if self.data_mode != "live":
+            return
         now = datetime.now(timezone.utc)
         while True:
             try:
                 queued_snapshot = self._live_queue.get_nowait()
             except queue.Empty:
                 return
-            if self.route_selection_required:
-                if (
-                    not isinstance(queued_snapshot, tuple)
-                    or len(queued_snapshot) != 2
-                ):
-                    logger.warning("Unerwartete Live-Daten ohne Auswahlversion ignoriert")
+            if (
+                not isinstance(queued_snapshot, tuple)
+                or len(queued_snapshot) != 3
+            ):
+                logger.warning(
+                    "Unerwartete Live-Daten ohne Modusversion ignoriert"
+                )
+                continue
+            epoch, generation, snapshot = queued_snapshot
+            with self._selection_lock:
+                if self.data_mode != "live" or epoch != self._live_epoch:
                     continue
-                generation, snapshot = queued_snapshot
-                with self._selection_lock:
-                    if (
-                        generation != self._selection_generation
-                        or (
-                            self.selected_route_id is None
-                            and not self.route_selection_preview_enabled
-                        )
-                    ):
+                selected_route_id = None
+                preview_enabled = False
+                if self.route_selection_required:
+                    if generation != self._selection_generation:
                         continue
                     selected_route_id = self.selected_route_id
-            else:
-                snapshot = queued_snapshot
-            if not isinstance(snapshot, dict):
-                logger.warning("Unerwartete Live-Daten vom Typ %s ignoriert", type(snapshot))
-                continue
-            for route in self.routes:
-                with self._selection_lock:
+                    preview_enabled = self.route_selection_preview_enabled
+                    if selected_route_id is None and not preview_enabled:
+                        continue
+                if not isinstance(snapshot, dict):
+                    logger.warning(
+                        "Unerwartete Live-Daten vom Typ %s ignoriert",
+                        type(snapshot),
+                    )
+                    continue
+                for route in self.routes:
                     if self.route_selection_required:
                         if (
-                            generation != self._selection_generation
-                            or self.selected_route_id != selected_route_id
-                            or (
-                                selected_route_id is None
-                                and not self.route_selection_preview_enabled
-                            )
-                            or (
-                                selected_route_id is not None
-                                and route.id != selected_route_id
-                            )
+                            selected_route_id is not None
+                            and route.id != selected_route_id
+                        ):
+                            continue
+                        if (
+                            selected_route_id is None
+                            and not preview_enabled
                         ):
                             continue
                     route_data = snapshot.get(route.id)
@@ -1000,14 +1099,12 @@ class Controller():
                         continue
                     previous_states = self._capture_arrival_states(route)
                     try:
-                        if isinstance(route_data, RouteLiveData):
-                            trips = route_data.trips
-                            connections = route_data.connections
-                        else:
-                            trips = list(route_data)
-                            connections = []
-                        route.set_trips(list(trips), now, minute_value)
-                        route.connections = list(connections)
+                        self._apply_route_data(
+                            route,
+                            route_data,
+                            now,
+                            minute_value,
+                        )
                         self._log_arrival_transitions(route, previous_states)
                     except Exception:
                         logger.exception(

@@ -1038,5 +1038,136 @@ class ControllerTrainSelectionTests(unittest.TestCase):
             self.assertEqual(strip.getPixelColor(position), 0xFFFF00)
 
 
+class DataModeUITests(unittest.TestCase):
+    @staticmethod
+    def make_cyclic_train():
+        stops = [
+            Stop(0, START, START + timedelta(seconds=45)),
+            Stop(1, START + timedelta(seconds=60), START + timedelta(seconds=70)),
+            Stop(2, START + timedelta(seconds=90), START + timedelta(seconds=135)),
+            Stop(1, START + timedelta(seconds=150), START + timedelta(seconds=160)),
+            Stop(0, START + timedelta(seconds=180), START + timedelta(seconds=180)),
+        ]
+        trip = Trip("sim-0-0", "sim-0-0", stops, cycle_seconds=180, cyclic=True)
+        return Train("sim-0-0", trip)
+
+    def test_header_shows_live_status_only_in_live_mode(self):
+        app = TramUI.__new__(TramUI)
+        app.tk = MagicMock()
+        app.root = MagicMock()
+
+        app.controller = MagicMock()
+        app.controller.data_mode = "live"
+        app._header("Linie 7")
+        live_labels = [
+            call.kwargs.get("text") for call in app.tk.Label.call_args_list
+        ]
+        live_buttons = [
+            call.kwargs.get("text") for call in app.tk.Button.call_args_list
+        ]
+        self.assertIn("● Live", live_labels)
+        self.assertIn("⚙", live_buttons)
+
+        app.tk.reset_mock()
+        app.controller.data_mode = "simulation"
+        app._header("Linie 7")
+        simulated_labels = [
+            call.kwargs.get("text") for call in app.tk.Label.call_args_list
+        ]
+        simulated_buttons = [
+            call.kwargs.get("text") for call in app.tk.Button.call_args_list
+        ]
+        self.assertNotIn("● Live", simulated_labels)
+        self.assertIn("⚙", simulated_buttons)
+
+    def test_apply_data_mode_preserves_route_and_direction_filter(self):
+        route = make_route()
+        app = TramUI.__new__(TramUI)
+        app.tk = MagicMock()
+        app.controller = MagicMock()
+        app.controller.data_mode = "live"
+        app.screen = "trains"
+        app.route = route
+        app.direction_id = 2
+        app._settings_window = None
+        app._close_settings = MagicMock()
+        app.show_trains = MagicMock()
+        app._select_direction = MagicMock()
+
+        app._apply_data_mode("simulation")
+
+        app.controller.set_data_mode.assert_called_once_with("simulation")
+        app.controller.select_train.assert_called_once_with(None)
+        app.show_trains.assert_called_once_with(route.id)
+        app._select_direction.assert_called_once_with(2)
+
+    def test_apply_same_data_mode_only_closes_settings(self):
+        app = TramUI.__new__(TramUI)
+        app.tk = MagicMock()
+        app.controller = MagicMock()
+        app.controller.data_mode = "simulation"
+        app._settings_window = None
+        app._close_settings = MagicMock()
+
+        app._apply_data_mode("simulation")
+
+        app.controller.set_data_mode.assert_not_called()
+        app._close_settings.assert_called_once()
+
+    def test_route_selection_hides_closure_controls_in_simulation(self):
+        route = make_route()
+        route.closed_section = (1, 2)
+        app = TramUI.__new__(TramUI)
+        app.controller = MagicMock()
+        app.controller.data_mode = "simulation"
+        app.routes = [route]
+        app.root = MagicMock()
+        app.root.winfo_children.return_value = []
+        app.tk = MagicMock()
+        app.closure_store = MagicMock()
+        app._header = MagicMock()
+
+        app.show_routes()
+
+        for call in app.tk.Button.call_args_list:
+            text = call.kwargs.get("text", "")
+            self.assertNotIn("Baustelle", text)
+
+    def test_train_info_shows_current_round_trip_leg(self):
+        route = make_route()
+        train = self.make_cyclic_train()
+        train.direction = 1
+        train.stop_index = 0
+
+        info = train_info(route, train)
+
+        self.assertEqual(info.origin, "Moosweiher")
+        self.assertEqual(info.destination, "Moosgrund")
+        self.assertEqual(info.departure, START + timedelta(seconds=45))
+        self.assertEqual(info.arrival, START + timedelta(seconds=90))
+
+        train.direction = -1
+        train.stop_index = 2
+        info = train_info(route, train)
+
+        self.assertEqual(info.origin, "Moosgrund")
+        self.assertEqual(info.destination, "Moosweiher")
+        self.assertEqual(info.departure, START + timedelta(seconds=135))
+        self.assertEqual(info.arrival, START + timedelta(seconds=180))
+
+    def test_stop_timeline_does_not_repeat_start_terminus_at_cycle_end(self):
+        route = make_route()
+        train = self.make_cyclic_train()
+        train.stop_index = 4
+        train.next_index = 0
+        train.at_station = True
+
+        timeline = train_stop_timeline(route, train)
+
+        self.assertEqual(timeline.current.name, "Moosweiher")
+        self.assertEqual(timeline.upcoming, ())
+        self.assertEqual(timeline.next_destination, "Ziel erreicht")
+
+
 if __name__ == "__main__":
     unittest.main()

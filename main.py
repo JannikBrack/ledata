@@ -1,12 +1,14 @@
-# meta.json enthaelt die Konfiguration (LED-Strip, Linien, Zuege), fahrplan.json die Umlaeufe
+# meta.json enthaelt die Konfiguration (LED-Strip, Linien), fahrplan.json dient
+# als Zeitmuster fuer die simulierte Linie 1.
 
 # Wichtige information --------
-# Jeder Zug hat im Fahrplan einen eigenen Umlauf mit echten UTC-Zeiten
+# Live-Fahrten und simulierte Umlaeufe werden zur Laufzeit ueber den Controller
+# in die Routen eingesetzt.
 
 import argparse
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import timezone
 from pathlib import Path
 
 from classes import (
@@ -15,11 +17,11 @@ from classes import (
     RouteConnection,
     RouteLiveData,
     Stop,
-    Train,
     Trip,
 )
 from closures import ClosureStore
 from led_backend import PixelStrip, FakeStrip, HAVE_RPI
+from simulation_feed import SimulationFeed
 from ui import run_ui
 
 META_PATH = Path(__file__).with_name("meta.json")
@@ -45,34 +47,6 @@ def build_strip(led_config, dry_run=False):
         led_config["brightness"],
         led_config["channel"],
     )
-
-
-def build_trips(fahrplan, route_id, day):
-    # Alle Zeiten im Fahrplan sind echte UTC-Zeitstempel (ISO 8601) und werden
-    # beim Laden auf das angegebene Datum umdatiert
-    for entry in fahrplan:
-        if entry["route_id"] != route_id:
-            continue
-        trips = []
-        for trip_config in entry["trips"]:
-            trip = Trip(
-                id=trip_config["id"],
-                train_id=trip_config["train_id"],
-                stops=[
-                    Stop(
-                        stop["station_id"],
-                        stop["arrival"],
-                        stop["departure"],
-                        stop.get("delay_in_sec", 0),
-                    )
-                    for stop in trip_config["stops"]
-                ],
-                cycle_seconds=trip_config.get("cycle_seconds"),
-            )
-            trip.rebase_to_date(day)
-            trips.append(trip)
-        return trips
-    return []
 
 
 def _calls_to_stops(calls):
@@ -225,39 +199,20 @@ def build_live_source(meta, closure_store=None):
     return source
 
 
-def build_route(route_config, fahrplan, day, live=False):
+def build_route(route_config):
     station_names = {
         station["id"]: station.get("name", str(station["id"]))
         for station in route_config["stations"]
     }
-    if live:
-        # Live-Modus: die Zuege kommen zur Laufzeit aus der API (Route.set_trips)
-        return Route(
-            route_config["id"],
-            route_config["led_layout"],
-            [],
-            tuple(route_config["color"]),
-            route_config["start_of_route"],
-            [],
-            station_names=station_names,
-            name=route_config.get("name", f"Linie {route_config['id']}"),
-        )
-    trips = build_trips(fahrplan, route_config["id"], day)
-    trips_by_train = {trip.train_id: trip for trip in trips}
-
-    # Richtung und Startposition ergeben sich aus dem Umlauf und der aktuellen Uhrzeit
-    trains = [
-        Train(id=train["id"], trip=trips_by_train[train["id"]])
-        for train in route_config["trains"]
-    ]
-
+    # Die Bahnen kommen zur Laufzeit aus der Live-API oder der Simulation
+    # (Controller.set_data_mode / Route.set_trips).
     return Route(
         route_config["id"],
         route_config["led_layout"],
-        trains,
+        [],
         tuple(route_config["color"]),
         route_config["start_of_route"],
-        trips,
+        [],
         station_names=station_names,
         name=route_config.get("name", f"Linie {route_config['id']}"),
     )
@@ -265,8 +220,6 @@ def build_route(route_config, fahrplan, day, live=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Freiburger Stadtbahnen auf dem LED-Streifen")
-    parser.add_argument("--source", choices=["live", "fahrplan"], default="live",
-                        help="live = Echtzeit aus der TRIAS-API (Standard), fahrplan = fahrplan.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="ohne LED-Hardware laufen")
     ui_group = parser.add_mutually_exclusive_group()
@@ -282,35 +235,38 @@ if __name__ == "__main__":
                         format="%(asctime)s %(levelname)s %(message)s")
 
     meta = load_json(META_PATH)
-    live = args.source == "live"
-    closure_store = None
-    if live:
-        closure_store = ClosureStore(
-            BAUSTELLEN_PATH,
-            {
-                route["id"]: [station["id"] for station in route["stations"]]
-                for route in meta["routes"]
-            },
+    try:
+        fahrplan = load_json(FAHRPLAN_PATH)["fahrplan"]
+    except (OSError, KeyError, json.JSONDecodeError) as exc:
+        LOG.warning(
+            "Fahrplanmuster fuer die Simulation nicht lesbar (%s); "
+            "alle Linien werden aus den LED-Abstaenden erzeugt",
+            exc,
         )
-        closure_store.load()
-    fahrplan = [] if live else load_json(FAHRPLAN_PATH)["fahrplan"]
-    today = datetime.now(timezone.utc).date()
+        fahrplan = None
+    closure_store = ClosureStore(
+        BAUSTELLEN_PATH,
+        {
+            route["id"]: [station["id"] for station in route["stations"]]
+            for route in meta["routes"]
+        },
+    )
+    closure_store.load()
 
     strip = build_strip(meta["led"], dry_run=args.dry_run)
     # Muss einmal aufgerufen werden, bevor setPixelColor()/show() benutzt wird
     strip.begin()
 
-    routes = [build_route(route_config, fahrplan, today, live=live) for route_config in meta["routes"]]
-    if closure_store is not None:
-        for route in routes:
-            route.set_closed_section(closure_store.get(route.id))
+    routes = [build_route(route_config) for route_config in meta["routes"]]
+    for route in routes:
+        route.set_closed_section(closure_store.get(route.id))
 
     controller = Controller(routes, strip)
     controller.tickinterval = meta["tickinterval_ms"]
     controller.resync_interval_seconds = meta.get("resync_interval_seconds", 60)
-    if live:
-        controller.trip_source = build_live_source(meta, closure_store)
-        controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
+    controller.trip_source = build_live_source(meta, closure_store)
+    controller.simulation_source = SimulationFeed(routes, fahrplan).snapshot
+    controller.live_refresh_seconds = meta["trias"].get("poll_interval_seconds", 30)
     use_ui = args.ui if args.ui is not None else HAVE_RPI and not args.dry_run
     try:
         start_application(routes, controller, closure_store, use_ui)

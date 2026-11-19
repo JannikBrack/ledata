@@ -85,7 +85,7 @@ Die Zuständigkeiten innerhalb des Teams werden den folgenden Arbeitsbereichen n
 
 ### 3.2 Technische EPK im Live-Betrieb
 
-Die EPK zeigt den technischen Datenfluss des Live-Betriebs. Der optionale Fahrplanmodus ist nicht dargestellt.
+Die EPK zeigt den technischen Datenfluss des Live-Betriebs. Der optionale Simulationsmodus ist nicht dargestellt.
 
 **Abbildung 1: Technischer Live-Datenfluss von LEData**
 
@@ -93,7 +93,7 @@ Die EPK zeigt den technischen Datenfluss des Live-Betriebs. Der optionale Fahrpl
 
 ## 4 Inhaltlicher Teil
 
-Die technische Darstellung basiert auf dem aktuellen Repository-Stand, insbesondere auf `main.py`, `live_feed.py`, `classes.py`, `ui.py` und `meta.json`. Ein genauer Versions- und Datumsnachweis wird im Quellenverzeichnis ergänzt.
+Die technische Darstellung basiert auf dem aktuellen Repository-Stand, insbesondere auf `main.py`, `live_feed.py`, `simulation_feed.py`, `classes.py`, `ui.py` und `meta.json`. Ein genauer Versions- und Datumsnachweis wird im Quellenverzeichnis ergänzt.
 
 ### 4.1 Systemübersicht
 

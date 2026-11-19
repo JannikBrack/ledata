@@ -426,7 +426,9 @@ class ControllerLiveTests(unittest.TestCase):
             0: [make_trip("live-0")],
             1: [make_trip("live-1")],
         }
-        controller._live_queue.put((generation, snapshot))
+        controller._live_queue.put(
+            (controller._live_epoch, generation, snapshot)
+        )
 
         controller._drain_live_queue(600)
 
@@ -434,7 +436,9 @@ class ControllerLiveTests(unittest.TestCase):
         self.assertEqual([train.id for train in second_route.trains], ["live-1"])
 
         controller.select_route(first_route.id)
-        controller._live_queue.put((generation, snapshot))
+        controller._live_queue.put(
+            (controller._live_epoch, generation, snapshot)
+        )
         controller._drain_live_queue(600)
 
         self.assertEqual(first_route.trains, [])
@@ -531,7 +535,11 @@ class ControllerLiveTests(unittest.TestCase):
             delay_seconds=0,
         )
         controller._live_queue.put(
-            {0: RouteLiveData(trips=[trip], connections=[connection])}
+            (
+                controller._live_epoch,
+                None,
+                {0: RouteLiveData(trips=[trip], connections=[connection])},
+            )
         )
 
         controller._drain_live_queue(600)
@@ -560,6 +568,141 @@ class ControllerLiveTests(unittest.TestCase):
 
         self.assertFalse(thread.is_alive())
         self.assertEqual([train.id for train in route.trains], [0])
+
+
+class DataModeTests(unittest.TestCase):
+    @staticmethod
+    def make_cyclic_trip(trip_id, base=T0):
+        stops = [
+            Stop(0, base, base + timedelta(seconds=45)),
+            Stop(1, base + timedelta(seconds=60), base + timedelta(seconds=70)),
+            Stop(2, base + timedelta(seconds=90), base + timedelta(seconds=135)),
+            Stop(1, base + timedelta(seconds=150), base + timedelta(seconds=160)),
+            Stop(0, base + timedelta(seconds=180), base + timedelta(seconds=180)),
+        ]
+        return Trip(
+            trip_id,
+            trip_id,
+            stops,
+            cycle_seconds=180,
+            cyclic=True,
+        )
+
+    def test_simulation_fills_all_routes_without_calling_live_source(self):
+        first = make_route()
+        second = make_route()
+        second.id = 1
+        controller = Controller([first, second], FakeStrip(15))
+        controller.require_route_selection()
+        live_calls = []
+        controller.trip_source = lambda *args: live_calls.append(args) or {}
+        controller.simulation_source = lambda _now: {
+            first.id: RouteLiveData(
+                trips=[
+                    self.make_cyclic_trip("sim-0-0"),
+                    self.make_cyclic_trip("sim-0-1"),
+                ],
+                connections=[],
+            ),
+            second.id: RouteLiveData(
+                trips=[self.make_cyclic_trip("sim-1-0")],
+                connections=[],
+            ),
+        }
+
+        controller.set_data_mode("simulation")
+
+        self.assertEqual(controller.data_mode, "simulation")
+        self.assertEqual(
+            [train.trip.id for train in first.trains],
+            ["sim-0-0", "sim-0-1"],
+        )
+        self.assertEqual(
+            [train.trip.id for train in second.trains],
+            ["sim-1-0"],
+        )
+        self.assertEqual(live_calls, [])
+
+        controller.select_route(first.id)
+
+        self.assertEqual(len(first.trains), 2)
+        self.assertEqual(len(second.trains), 1)
+
+    def test_switch_back_to_live_clears_trains_and_restores_closures(self):
+        route = make_route()
+        route.set_closed_section((1, 2))
+        controller = Controller([route], FakeStrip(15))
+        controller.simulation_source = lambda _now: {
+            route.id: RouteLiveData(
+                trips=[self.make_cyclic_trip("sim-0-0")],
+                connections=[],
+            )
+        }
+
+        controller.set_data_mode("simulation")
+        self.assertIsNone(route.closed_section)
+        self.assertEqual([train.trip.id for train in route.trains], ["sim-0-0"])
+
+        controller.set_data_mode("live")
+
+        self.assertEqual(controller.data_mode, "live")
+        self.assertEqual(route.closed_section, (1, 2))
+        self.assertEqual(route.trains, [])
+        self.assertEqual(route.connections, [])
+
+    def test_stale_live_snapshot_is_ignored_while_simulating(self):
+        route = make_route()
+        controller = Controller([route], FakeStrip(15))
+        controller.simulation_source = lambda _now: {
+            route.id: RouteLiveData(
+                trips=[self.make_cyclic_trip("sim-0-0")],
+                connections=[],
+            )
+        }
+        controller.set_data_mode("simulation")
+        stale_epoch = controller._live_epoch - 1
+        controller._live_queue.put(
+            (
+                stale_epoch,
+                None,
+                {
+                    route.id: [
+                        self.make_cyclic_trip(
+                            "stale-live",
+                            base=datetime.now(timezone.utc),
+                        )
+                    ]
+                },
+            )
+        )
+
+        controller._drain_live_queue(600)
+
+        self.assertEqual([train.trip.id for train in route.trains], ["sim-0-0"])
+
+    def test_preview_switch_does_not_clear_simulation_trips(self):
+        first = make_route()
+        second = make_route()
+        second.id = 1
+        controller = Controller([first, second], FakeStrip(15))
+        controller.require_route_selection()
+        controller.simulation_source = lambda _now: {
+            first.id: RouteLiveData(
+                trips=[self.make_cyclic_trip("sim-0-0")],
+                connections=[],
+            ),
+            second.id: RouteLiveData(
+                trips=[self.make_cyclic_trip("sim-1-0")],
+                connections=[],
+            ),
+        }
+        controller.set_data_mode("simulation")
+
+        controller.set_route_selection_preview_enabled(True)
+        controller.set_route_selection_preview_enabled(False)
+
+        self.assertEqual(len(first.trains), 1)
+        self.assertEqual(len(second.trains), 1)
 
 
 if __name__ == "__main__":

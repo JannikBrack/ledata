@@ -30,15 +30,14 @@ Live-Daten aller Linien für eine dynamische LED-Vorschau abgefragt. Die
 Vorschau zeigt aktive Bahnen in ihrer Linienfarbe, ohne Stations- oder
 Baustellenmarker; wenn Bahnen verschiedener Linien dieselbe LED-Position
 belegen, leuchtet sie weiß. Sie ist ausschließlich auf der Linienauswahlseite
-aktiv und stoppt bei der Linienauswahl. Im Fahrplanmodus zeigt sie die
-vorhandenen Fahrplandaten (aktuell nur Linie 1). In der Linienübersicht leuchten
-alle aktiven Bahnen der gewählten Linie; in der Detailansicht nur die
-ausgewählte Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten
+aktiv und stoppt bei der Linienauswahl. In der Linienübersicht leuchten alle
+aktiven Bahnen der gewählten Linie; in der Detailansicht nur die ausgewählte
+Bahn. Im Terminalbetrieb werden weiterhin Prozess- und Live-Daten
 protokolliert, der LED-Streifen wird dort jedoch nicht angesteuert.
-Im Live-Modus (`--source live`) kann über „Baustelle eintragen“ pro Linie ein
-gesperrter Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
-Streckenabschnitte dazwischen gelten als gesperrt.
-Die Fahrplan-Simulation (`--source fahrplan`) zeigt keine Baustellensteuerung.
+Im Live-Modus kann über „Baustelle eintragen“ pro Linie ein gesperrter
+Abschnitt mit Von- und Bis-Haltestelle festgelegt werden; alle
+Streckenabschnitte dazwischen gelten als gesperrt. Baustellen gibt es
+ausschließlich im Live-Modus.
 Die Linienauswahl und der Kopf des Bahnplans markieren die betroffene Linie mit
 „⚠ Baustelle“ direkt neben dem Liniennamen. In der Fahrtübersicht gibt es kein
 separates Warnsymbol; Fußwegtexte werden dort nicht angezeigt. Die regulären
@@ -49,6 +48,17 @@ fünf Minuten Fußweg passt. Nicht passende Einzelteile erscheinen dort nicht
 als vollständige Verbindung; die echten Teilfahrten bleiben auf den LEDs
 getrennt sichtbar. Der gesperrte Streckenabschnitt wird auf dem LED-Streifen
 gelb markiert; Linie 3 leuchtet orange.
+
+Über das Zahnrad in der Kopfzeile lassen sich die Einstellungen öffnen. Dort
+kann zwischen „Live-Daten“ und „Simulation“ gewechselt werden. Im Live-Modus
+zeigt die Kopfzeile zusätzlich „● Live“; im Simulationsmodus gibt es keine
+Statusanzeige. Die Simulation erzeugt für jede Linie dauerhaft vier Bahnen, die
+ihren Rundkurs von einer Endstation zur anderen und zurück fahren. Linie 1
+übernimmt die realen Fahr- und Haltezeiten aus `fahrplan.json`; die übrigen
+Linien werden aus den LED-Abständen abgeleitet. Linienauswahl, Richtungsfilter,
+Bahnfilter und Detailansicht funktionieren dabei unverändert. Beim Zurückschalten
+auf Live werden die simulierten Bahnen entfernt, gespeicherte Baustellen wieder
+aktiviert und die Live-Daten sofort neu geladen.
 
 Die Baustelleneinstellung wird lokal in `baustellen.json` gespeichert. Beim
 nächsten Live-Start fragt die Anwendung im Terminal, ob die gespeicherte
@@ -80,5 +90,5 @@ Desktop-Anzeige vorhanden ist. `--dry-run` startet ohne LED-Hardware.
 ```bash
 python3 main.py
 python3 main.py --terminal --dry-run
-python3 main.py --ui --source fahrplan
+python3 main.py --ui --dry-run
 ```
