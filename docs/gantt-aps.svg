@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="665" viewBox="0 0 1020 665" role="img" aria-labelledby="title desc">
+  <title id="title">Gantt-Diagramm der Arbeitspakete von LEData</title>
+  <desc id="desc">Zeitachse vom 15. Juli bis zum 26. November 2026. Die Balken zeigen die Laufzeit der Arbeitspakete; die AP-Nummern stehen einheitlich rechts neben der Zeitachse. Arbeitspakete derselben Phase verlaufen parallel.</desc>
+  <style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #222; }
+    .title { font-size: 20px; font-weight: 700; }
+    .subtitle { font-size: 13px; fill: #555; }
+    .axis-label { font-size: 12px; fill: #444; }
+    .ap-label { font-size: 14px; font-weight: 700; }
+    .grid { stroke: #d7dce0; stroke-width: 1; }
+    .axis { stroke: #59636e; stroke-width: 1.2; }
+    .bar { fill: #32816f; }
+  </style>
+  <rect width="1020" height="665" fill="#fff"/>
+  <text class="title" x="90" y="30">LEData — Gantt-Diagramm</text>
+  <text class="subtitle" x="90" y="52">15.07.2026 bis 26.11.2026 · APs desselben Zeitraums verlaufen parallel</text>
+  <text class="axis-label" x="825" y="88" font-weight="700">Arbeitspaket</text>
+  <line class="axis" x1="90" y1="96" x2="786.8" y2="96"/>
+  <line class="grid" x1="90" y1="96" x2="90" y2="646"/>
+  <line class="grid" x1="178.4" y1="96" x2="178.4" y2="646"/>
+  <line class="grid" x1="339.6" y1="96" x2="339.6" y2="646"/>
+  <line class="grid" x1="495.6" y1="96" x2="495.6" y2="646"/>
+  <line class="grid" x1="656.8" y1="96" x2="656.8" y2="646"/>
+  <line class="grid" x1="786.8" y1="96" x2="786.8" y2="646"/>
+  <text class="axis-label" x="90" y="84" text-anchor="start">15.07.</text>
+  <text class="axis-label" x="178.4" y="84" text-anchor="middle">01.08.</text>
+  <text class="axis-label" x="339.6" y="84" text-anchor="middle">01.09.</text>
+  <text class="axis-label" x="495.6" y="84" text-anchor="middle">01.10.</text>
+  <text class="axis-label" x="656.8" y="84" text-anchor="middle">01.11.</text>
+  <text class="axis-label" x="786.8" y="84" text-anchor="end">26.11.</text>
+  <rect class="bar" x="90" y="108" width="36.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="120">AP 1</text>
+  <rect class="bar" x="126.4" y="130" width="5.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="142">AP 2</text>
+  <rect class="bar" x="131.6" y="152" width="5.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="164">AP 3</text>
+  <rect class="bar" x="136.8" y="174" width="15.6" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="186">AP 4</text>
+  <rect class="bar" x="152.4" y="196" width="5.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="208">AP 5</text>
+  <rect class="bar" x="157.6" y="218" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="230">AP 6</text>
+  <rect class="bar" x="266.8" y="240" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="252">AP 7</text>
+  <rect class="bar" x="266.8" y="262" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="274">AP 8</text>
+  <rect class="bar" x="266.8" y="284" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="296">AP 9</text>
+  <rect class="bar" x="266.8" y="306" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="318">AP 10</text>
+  <rect class="bar" x="376" y="328" width="10.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="340">AP 11</text>
+  <rect class="bar" x="376" y="350" width="10.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="362">AP 12</text>
+  <rect class="bar" x="376" y="372" width="10.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="384">AP 13</text>
+  <rect class="bar" x="376" y="394" width="10.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="406">AP 14</text>
+  <rect class="bar" x="386.4" y="416" width="72.8" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="428">AP 15</text>
+  <rect class="bar" x="386.4" y="438" width="72.8" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="450">AP 16</text>
+  <rect class="bar" x="459.2" y="460" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="472">AP 17</text>
+  <rect class="bar" x="459.2" y="482" width="109.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="494">AP 18</text>
+  <rect class="bar" x="568.4" y="504" width="187.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="516">AP 19</text>
+  <rect class="bar" x="568.4" y="526" width="187.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="538">AP 20</text>
+  <rect class="bar" x="755.6" y="548" width="15.6" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="560">AP 21</text>
+  <rect class="bar" x="755.6" y="570" width="15.6" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="582">AP 22</text>
+  <rect class="bar" x="771.2" y="592" width="10.4" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="604">AP 23</text>
+  <rect class="bar" x="781.6" y="614" width="5.2" height="13" rx="2"/>
+  <text class="ap-label" x="825" y="626">AP 24</text>
+</svg>
