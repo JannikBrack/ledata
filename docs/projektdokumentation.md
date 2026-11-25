@@ -227,13 +227,3 @@ Für den Kauf des WS2812B-Streifens im Omega und des im Laden gekauften Netzteil
 | 5-V-Netzteil/Netzstecker (Power Supply) | 1 Stk. | Stromversorgung der Komponenten; tatsächlicher Einsatz nicht dokumentiert            | [Amazon-Produktlink](https://www.amazon.de/dp/B01HRR9GY4)   |
 | Touch Display                           | 1 Stk. | Anzeige und Bedienung der Fahrtenübersicht und Detailansicht                         | [Amazon-Produktlink](https://www.amazon.de/dp/B0FMYFKDLZ)   |
 | Raspberry Pi 4B                         | 1 Stk. | Ausführung der Anwendung und Steuerung der Hardware                                  | Vorhanden; musste laut Kostenübersicht nicht gekauft werden |
-
-## Anhang A: Formatcheck für den Export
-
-- DIN A4
-- Seitenränder links und rechts jeweils 30 mm
-- Schriftgröße 12 pt in einer gut lesbaren serifenlosen Proportionalschrift
-- 1,5-facher Zeilenabstand
-- Abbildungen und Tabellen fortlaufend nummerieren und beschriften
-- Höchstens zehn Seiten reiner Inhalt; Deckblatt, Inhaltsverzeichnis, Abbildungs- und Quellenverzeichnis sowie Anhang zählen laut Vorgabe nicht dazu
-- Inhaltsverzeichnis-Seitenzahlen nach dem Seitenlayout in Word/PDF aktualisieren
