@@ -16,57 +16,14 @@
 
 ## Inhaltsverzeichnis
 
-1. [Projektauftrag](#1-projektauftrag) — Seite: nach Export
-2. [Teamsitzungsprotokolle](#2-teamsitzungsprotokolle) — Seite: nach Export
-3. [Organisatorischer Teil](#3-organisatorischer-teil) — Seite: nach Export
-   1. [Aufbauorganisation](#31-aufbauorganisation) — Seite: nach Export
-   2. [Technische EPK im Live-Betrieb](#32-technische-epk-im-live-betrieb) — Seite: nach Export
-4. [Inhaltlicher Teil](#4-inhaltlicher-teil) — Seite: nach Export
-   1. [Systemübersicht](#41-systemübersicht) — Seite: nach Export
-   2. [Live-Datenquelle](#42-live-datenquelle) — Seite: nach Export
-   3. [Datenverarbeitung](#43-datenverarbeitung) — Seite: nach Export
-   4. [Touchdisplay und Bedienung](#44-touchdisplay-und-bedienung) — Seite: nach Export
-   5. [Hardware und LED-Anzeige](#45-hardware-und-led-anzeige) — Seite: nach Export
-5. [Abschlussbericht](#5-abschlussbericht) — Seite: nach Export
-   1. [Kontrolle](#51-kontrolle) — Seite: nach Export
-   2. [Ergebnisse](#52-ergebnisse) — Seite: nach Export
-   3. [Reflexion der Gruppenarbeit](#53-reflexion-der-gruppenarbeit) — Seite: nach Export
-6. [Quellenverzeichnis und KI-Prompts](#6-quellenverzeichnis-und-ki-prompts) — Seite: nach Export
-7. [Abbildungsverzeichnis](#7-abbildungsverzeichnis) — Seite: nach Export
-8. [Materialverzeichnis](#8-materialverzeichnis) — Seite: nach Export
-9. [Anhang A: Formatcheck für den Export](#anhang-a-formatcheck-für-den-export) — Seite: nach Export
+<mark> kommt noch </mark>
 
 ## 1 Projektauftrag
+<mark> kommt noch </mark>
 
 ## 2 Teamsitzungsprotokolle
 
-### Vorlage Ergebnisprotokoll
-
-**Protokollnummer:** [eintragen]<br>
-**Datum und Uhrzeit:** [eintragen]<br>
-**Teilnehmende:** [eintragen]<br>
-**Protokollführung:** [eintragen]
-
-#### Tagesordnung
-
-1. [Tagesordnungspunkt]
-2. [Tagesordnungspunkt]
-
-#### Ergebnisse und Beschlüsse
-
-**Tabelle 2: Ergebnisse und Beschlüsse des Teams**
-
-| Tagesordnungspunkt | Ergebnis/Beschluss |
-|---|---|
-| [Punkt] | [Ergebnis oder Beschluss] |
-
-#### Aufgaben
-
-**Tabelle 3: Aufgaben aus der Teamsitzung**
-
-| Aufgabe | Zuständig | Termin | Status |
-|---|---|---|---|
-| [Aufgabe] | [Name] | [Datum] | [offen/erledigt] |
+<mark> kommt noch </mark>
 
 ## 3 Organisatorischer Teil
 
@@ -83,15 +40,22 @@ Die Zuständigkeiten innerhalb des Teams werden den folgenden Arbeitsbereichen n
 | Hardware | [wird ergänzt] |
 | Software | [wird ergänzt] |
 
-### 3.2 Technische EPK im Live-Betrieb
+<mark>Aus protokolle extrahieren</mark>
 
-Die EPK zeigt den technischen Datenfluss des Live-Betriebs. Der optionale Fahrplanmodus ist nicht dargestellt.
+### 3.2 Projektstrukturplan
+<mark>APs protokolle extrahieren</mark>
 
-**Abbildung 1: Technischer Live-Datenfluss von LEData**
+### 3.3 Zeitplanung
+<mark>Gant diagramm wenn APs fertig sind  aus Projekt-Protokoll extrahieren</mark>
 
-![EPK des technischen Live-Datenflusses](images/epk-live.png)
+### 3.4 Projektkosten
+
+<mark>Aus Antrag + Tatsächlicher wert mit preiskorrektur ist soll vergleich</mark>
 
 ## 4 Inhaltlicher Teil
+<mark>Aus Aktuellem Code extrahieren</mark>
+
+<mark>Technische EPK falls notwendig</mark>
 
 Die technische Darstellung basiert auf dem aktuellen Repository-Stand, insbesondere auf `main.py`, `live_feed.py`, `classes.py`, `ui.py` und `meta.json`. Ein genauer Versions- und Datumsnachweis wird im Quellenverzeichnis ergänzt.
 
@@ -105,11 +69,15 @@ Im Live-Modus fragt LEData den in der Konfiguration hinterlegten TRIAS-Dienst ab
 
 ### 4.3 Datenverarbeitung
 
+<mark>Meta.json anhängen<mark>
+
 Die Anwendung liest Linien-, Haltestellen- und LED-Zuordnungen aus `meta.json`. Die TRIAS-Antworten werden aus XML in Fahrten und Haltestellenaufrufe umgewandelt; dabei werden unter anderem geplante und prognostizierte Zeiten sowie Verspätungen übernommen. Anschließend werden die aktiven Fahrten der jeweiligen Route zugeordnet und an den Controller übergeben. Live-Daten werden standardmäßig alle 30 Sekunden aktualisiert. Richtungs- und Baustellenauswahl beeinflussen, welche Fahrten und Streckenabschnitte angezeigt werden.
 
 Bei vollständig fehlgeschlagenen TRIAS-Abfragen wird der Fehler protokolliert. Die zuletzt verfügbaren Zugdaten bleiben erhalten, bis neue Daten erfolgreich verarbeitet werden.
 
 ### 4.4 Touchdisplay und Bedienung
+
+<mark>Screenshot von Anwednung 3 darstellungen Linien auswahl bahn auswahl und selektierte bahn</mark>
 
 Die Touchscreen-Oberfläche ist mit Tkinter umgesetzt und ermöglicht die Auswahl einer Linie sowie – abhängig von der Ansicht – einer Fahrt oder Fahrtrichtung. Sie zeigt Informationen zu Fahrt, Haltestellen, Ziel und Verspätung. Im Live-Modus kann die Linienauswahl eine dynamische Vorschau der aktiven Bahnen anzeigen.
 
@@ -127,8 +95,16 @@ Im Repository sind außerdem 3D-Modelle für eine modulare Schiene mit WS2812B-L
 
 | Prüfkriterium/Ziel | Soll | Ist | Abweichung/Bewertung |
 |---|---|---|---|
+| Straßenbahnlinenen-Darstellung | Komplettes Straßenbahn netz von Freiburg abbilden | Netz wurde linear dargestellt Straßenbahnlinie muss dur bildschir gewechselt werden. | Die Umsetztung des Gesammten netzes ist nicht im ramen der Zeit und des Budgets |
+| Straßenbahnenfilter funktion | der User soll nach Richtung und einzehlnen bahnen Filtern können | genau so wie beschrieben | Umsetzung hat geklappt |
 | [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
 | [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+| [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+| [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+| [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+| [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+| [Kriterium] | [Sollwert] | [Ergebnis] | [Bewertung] |
+<mark> tabelle mit 5.2 ersetzten </mark>
 
 ### 5.2 Ergebnisse
 
@@ -136,12 +112,16 @@ Im Repository sind außerdem 3D-Modelle für eine modulare Schiene mit WS2812B-L
 - **Nicht oder teilweise umgesetzte Ziele:** [ergänzen]
 - **Ergebnis der Präsentation/Erprobung:** [ergänzen]
 
+<mark> auf protokoll ergänzen </mark>
+
 ### 5.3 Reflexion der Gruppenarbeit
 
-- **Was lief in der Zusammenarbeit gut?** [ergänzen]
-- **Welche Schwierigkeiten gab es?** [ergänzen]
-- **Wie wurden Aufgaben und Entscheidungen abgestimmt?** [ergänzen]
-- **Was würden wir beim nächsten Projekt anders machen?** [ergänzen]
+- **Was lief in der Zusammenarbeit gut?** Keiner Wurde zurück gelassen. Wissens stände wurden durch gute Kommunikation bei allen auf gleichem level gehalten. Abstimmung alle waren sich einig. Aufgabenverteilung. Anwesenheiten. Selbst bei überschätzung des umfangs schnelle und einfachere alternativen gefunden ohne die idee des projekts zu beschädigen 
+- **Welche Schwierigkeiten gab es?** Projektumfang überschätzt.
+- **Wie wurden Aufgaben und Entscheidungen abgestimmt?** Gemeinschaftliche Ideenfindeung, arbeitsverteilung, planung. Raum für diskusionen war gegeben.
+- **Was würden wir beim nächsten Projekt anders machen?** Genscheit planen sind zusammen eher halsüberkopf in die umsetzung gegangen
+
+### 5.4 Resultat mit stand Aufbau
 
 ## 6 Quellenverzeichnis und KI-Prompts
 
