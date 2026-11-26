@@ -16,14 +16,40 @@
 
 ## Inhaltsverzeichnis
 
-<mark> kommt noch </mark>
+| Abschnitt | Seite |
+|---|---:|
+| 1 Projektauftrag | 3 |
+| 2 Teamsitzungsprotokolle | 7 |
+| Protokolle Nr. 1–14 | 8–21 |
+| 3 Organisatorischer Teil | 22 |
+| 3.1 Aufbauorganisation | 22 |
+| 3.2 Projektstrukturplan | 22 |
+| 3.3 Zeitplanung | 23 |
+| 3.4 Projektkosten | 25 |
+| 4 Inhaltlicher Teil | 26 |
+| 4.1 Funktionaler Ablauf | 26 |
+| 4.2 Konfiguration und Betriebsarten | 28 |
+| 4.3 Live-Daten und Verarbeitung | 28 |
+| 4.4 Touchdisplay und Bedienung | 28 |
+| 4.5 Hardware und LED-Anzeige | 29 |
+| 5 Abschlussbericht | 29 |
+| 5.1 Zielerreichung und Ergebnisse | 29 |
+| 5.2 Reflexion der Gruppenarbeit | 30 |
+| 6 Quellenverzeichnis und KI-Prompts | 30 |
+| 7 Abbildungsverzeichnis | 37 |
+| 8 Materialverzeichnis | 37 |
+| Anhang A: Projektstrukturplan | 39 |
+| Anhang B: Bildquellennachweis | 43 |
 
 ## 1 Projektauftrag
-<mark> kommt noch </mark>
+
+Im PDF-Export ist an dieser Stelle der unveränderte Original-Projektantrag
+„Projektantrag – LEData“ eingefügt.
 
 ## 2 Teamsitzungsprotokolle
 
-<mark> kommt noch </mark>
+Im PDF-Export sind an dieser Stelle alle 14 Sitzungsprotokolle in ihrer
+Originalgestaltung eingefügt.
 
 ## 3 Organisatorischer Teil
 
@@ -31,7 +57,7 @@
 
 Die folgende Übersicht fasst die in den Sitzungsprotokollen dokumentierte Aufgabenverteilung zusammen. Sie beschreibt keine dauerhaften Ressortzuständigkeiten; Integrations- und Hardwareaufgaben wurden teilweise gemeinsam erledigt.
 
-**Tabelle 4: Aufgabenverteilung laut Sitzungsprotokollen**
+**Tabelle 2: Aufgabenverteilung laut Sitzungsprotokollen**
 
 | Aufgabe/Arbeitsbereich                             | Zuständig laut Protokoll                                                            |
 |----------------------------------------------------|-------------------------------------------------------------------------------------|
@@ -46,41 +72,12 @@ Die folgende Übersicht fasst die in den Sitzungsprotokollen dokumentierte Aufga
 
 ### 3.2 Projektstrukturplan
 
-Für die Zuordnung gilt: AP 1 bis AP 6 umfassen jeweils alle Arbeitsschritte des gleich nummerierten Protokolls. Ab Protokoll 7 wird innerhalb jedes Protokolls für jede unterschiedliche Zuständigkeit ein neues AP angelegt; mehrere Einträge derselben Zuständigkeit innerhalb eines Protokolls gehören zum selben AP.
-
 #### Projektstrukturplan (Entwurf)
 
 Die Arbeitspakete wurden aus den Sitzungsprotokollen übernommen und entsprechend der festgelegten AP-Zuordnung zusammengefasst. Der dokumentierte Ergebnisstand wird wiedergegeben; ein formales Abnahmekriterium ist in den Protokollen nicht für jedes AP festgehalten.
 
-**Tabelle 5: Projektstrukturplan (Entwurf aus den Sitzungsprotokollen)**
-
-| AP-Code | Arbeitspaket                                       | Aufgaben/Abgrenzung                                                                                                              | Ergebnis/Stand laut Protokoll                                                                            | Zuständig                                                                                                 |
-|---------|----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| AP 1    | Ausstattung und Display vorbereiten                | Komponenten auspacken; Touchdisplay montieren und ansteuern                                                                      | Display wurde angesteuert (im Protokoll mit Häkchen markiert); übrige Schritte als Ergebnisse aufgeführt | Zuständigkeit nicht angegeben                                                                             |
-| AP 2    | Stromversorgung und TRIAS-Zugang vorbereiten       | Stromversorgung testen; TRIAS-Zugang anfragen                                                                                    | Beide Schritte als Ergebnisse des Tages aufgeführt                                                       | Stromversorgung: Jannik Brack und Lena Hackenjos; TRIAS-Zugang: Raffael Langklotz und Valentino Schreiner |
-| AP 3    | LED-Ansteuerung und TRIAS-Abfrage prüfen           | LED-Ansteuerung untersuchen; TRIAS-Abfrage durchführen                                                                           | LED-Ansteuerung fehlerhaft; TRIAS-Abfrage erfolgreich                                                    | LED-Ansteuerung: Jannik Brack; TRIAS-Abfrage: Raffael Langklotz und Valentino Schreiner                   |
-| AP 4    | LED-Fehlersuche                                    | LED-Fehler untersuchen und Fehlersuche durchführen                                                                               | Fehler ungelöst; Fehlersuche erfolglos                                                                   | Fehleruntersuchung: gesamtes Team; Fehlersuche: Jannik Brack                                              |
-| AP 5    | LED-Protokoll und Muster erproben                  | WS2812B-Protokoll erkennen; LED-Muster testen                                                                                    | WS2812B-Protokoll erkannt; LED-Muster getestet                                                           | Protokoll: gesamtes Team; LED-Muster: Jannik Brack                                                        |
-| AP 6    | Linien vermessen und Schnittstellen klären         | Linien vermessen; offene Schnittstellen erfassen                                                                                 | Linien vermessen; Schnittstellen noch offen                                                              | Linienvermessung: gesamtes Team; Schnittstellen: Zuständigkeit nicht angegeben                            |
-| AP 7    | Fahrtenmodell abstimmen                            | Fahrtenmodell abstimmen                                                                                                          | Abstimmung als Arbeitsschritt dokumentiert                                                               | Jannik Brack                                                                                              |
-| AP 8    | Baustellenlogik planen                             | Baustellenlogik planen                                                                                                           | Planung als Arbeitsschritt dokumentiert                                                                  | Lena Hackenjos                                                                                            |
-| AP 9    | Fahrtübersicht konzipieren                         | Fahrtübersicht konzipieren                                                                                                       | Konzeption als Arbeitsschritt dokumentiert                                                               | Valentino Schreiner                                                                                       |
-| AP 10   | Detailansicht konzipieren                          | Detailansicht konzipieren                                                                                                        | Konzeption als Arbeitsschritt dokumentiert                                                               | Raffael Langklotz                                                                                         |
-| AP 11   | Fahrtenmodell umsetzen                             | Abgestimmtes Fahrtenmodell umsetzen                                                                                              | Als umgesetzt dokumentiert                                                                               | Jannik Brack                                                                                              |
-| AP 12   | Baustellenlogik umsetzen                           | Geplante Baustellenlogik umsetzen                                                                                                | Als umgesetzt dokumentiert                                                                               | Lena Hackenjos                                                                                            |
-| AP 13   | Fahrtübersicht umsetzen                            | Konzipierte Fahrtübersicht umsetzen                                                                                              | Als umgesetzt dokumentiert                                                                               | Valentino Schreiner                                                                                       |
-| AP 14   | Detailansicht umsetzen                             | Konzipierte Detailansicht umsetzen                                                                                               | Als umgesetzt dokumentiert                                                                               | Raffael Langklotz                                                                                         |
-| AP 15   | Betriebsmodi integrieren                           | Betriebsmodi integrieren                                                                                                         | Als Arbeitsschritt dokumentiert; Status nicht näher angegeben                                            | Jannik Brack und Lena Hackenjos                                                                           |
-| AP 16   | Regressionstests planen                            | Regressionstests planen                                                                                                          | Planung dokumentiert                                                                                     | Valentino Schreiner und Raffael Langklotz                                                                 |
-| AP 17   | Startlogik umsetzen                                | Startlogik umsetzen                                                                                                              | Als umgesetzt dokumentiert                                                                               | Jannik Brack und Lena Hackenjos                                                                           |
-| AP 18   | Testsuite erweitern                                | Testsuite erweitern                                                                                                              | Als Ergebnis des Tages aufgeführt                                                                        | Valentino Schreiner und Raffael Langklotz                                                                 |
-| AP 19   | Grenzsortierung korrigieren                        | Grenzsortierung korrigieren                                                                                                      | Als korrigiert dokumentiert                                                                              | Lena Hackenjos und Jannik Brack                                                                           |
-| AP 20   | Richtungstests ergänzen                            | Richtungstests ergänzen                                                                                                          | Als Ergebnis des Tages aufgeführt                                                                        | Valentino Schreiner und Raffael Langklotz                                                                 |
-| AP 21   | Touch-UI gemeinsam planen und KI-gestützt umsetzen | Touch-UI gemeinsam planen und mit KI umsetzen                                                                                    | Als gemeinsames Ergebnis in Protokoll 11 dokumentiert                                                    | Jannik Brack, Lena Hackenjos, Raffael Langklotz und Valentino Schreiner                                   |
-| AP 22   | Veraltete Antworten verwerfen                      | Veraltete Antworten verwerfen                                                                                                    | Als Ergebnis des Tages aufgeführt                                                                        | Jannik Brack und Lena Hackenjos                                                                           |
-| AP 23   | Regressionstests abschließen                       | Regressionstests abschließen                                                                                                     | Als abgeschlossen dokumentiert                                                                           | Valentino Schreiner und Raffael Langklotz                                                                 |
-| AP 24   | Hardware fertigstellen                             | Druckteile verkleben; LED-Streifen in das Darstellungsmodell einsetzen; Lötstellen herstellen; Raspberry Pi mit Gehäuse versehen | Hardware als fertiggestellt dokumentiert; Einzelschritte im protokollierten Arbeitsablauf genannt        | Hardwarefertigstellung: gesamtes Team; Zuständigkeit für Einzelschritte nicht separat angegeben           |
-| AP 25   | Projektdokumentation erstellen und abgeben         | Projektdokumentation schreiben und abgeben                                                                                       | Als abgeschlossen dokumentiert                                                                           | Jannik Brack, Lena Hackenjos, Raffael Langklotz und Valentino Schreiner                                   |
+Der vollständige Projektstrukturplan mit allen 25 Arbeitspaketen ist in
+Anhang A (S. 39–42) dokumentiert.
 
 ### 3.3 Zeitplanung
 
@@ -91,23 +88,26 @@ Die Zeiträume sind aus den Datumsangaben der Sitzungsprotokolle abgeleitet: Ein
 <a id="abbildung-1"></a>
 **Abbildung 1: Gantt-Diagramm der Arbeitspakete**
 
+<div style="page-break-before: always;"></div>
+
 ### 3.4 Projektkosten
 
 Im Projektantrag ist ein Gesamtbudget von 100 € vorgesehen; Einzelpreise sind dort nicht ausgewiesen. Die folgenden Angebotspreise stammen aus den Produktlinks in der „Projekt Analyse“ und wurden am 25.11.2026 abgerufen (Projektteam LEData, 2026; Amazon.de, o. J.). Preise und Verfügbarkeit können sich ändern; nicht verfügbare oder nicht eindeutig bepreiste Angebote bleiben als offen gekennzeichnet.
 
-**Tabelle 6: Ressourcen- und Kostenübersicht**
+**Tabelle 3: Ressourcen- und Kostenübersicht**
 
-| Ressource/Material                                                             | Menge laut Projektantrag | Preis laut Produktlink bzw. bekannte Angabe | unnötiger Kauf? |
-|--------------------------------------------------------------------------------|--------------------------|---------------------------------------------|-----------------|
-| LED-Streifen WS2812B (5 m) (im Omega gekauft                                   | 1 Stk.                   | 60€                                         | Nein            |
-| 5-V-Netzteil/Netzstecker (im Laden gekauft                                     | 1 Stk.                   | 24,99€                                      | Ja              |
-| [LED-Streifen WS2811 (5 m, 12 V)](https://www.amazon.de/dp/B01CNL6LBK)         | 1 Stk.                   | 25,99 €                                     | Ja              |
-| [Breadboard AZDelivery MB-102](https://www.amazon.de/dp/B07K8PQ4B5)            | 1 Stk.                   | 9,99                                        | Nein            |
-| [Jumper-Kabel Elegoo (120 Stück)](https://www.amazon.de/dp/B01EV70C78)         | 1 Skt.                   | 6,99 €                                      | Nein            |
-| [5-V-Netzteil/Netzstecker (Power Supply)](https://www.amazon.de/dp/B01HRR9GY4) | 1 Stk.                   | 16,99 €                                     | Nein            |
-| [Touch Display](https://www.amazon.de/dp/B0FMYFKDLZ)                           | 1 Stk.                   | 75€                                         | Nein            |
-| Raspberry Pi 4B                                                                | 1 Stk.                   | musste nicht gekauft werden                 | --              |
+| Ressource/Material                                                             | Menge laut Projektantrag | Preis / unnötiger Kauf? |
+|--------------------------------------------------------------------------------|--------------------------|-------------------------|
+| LED-Streifen WS2812B (5 m) (im Omega gekauft)                                  | 1 Stk.                   | 60 €; Nein              |
+| 5-V-Netzteil/Netzstecker (im Laden gekauft)                                    | 1 Stk.                   | 24,99 €; Ja             |
+| [LED-Streifen WS2811 (5 m, 12 V)](https://www.amazon.de/dp/B01CNL6LBK)         | 1 Stk.                   | 25,99 €; Ja             |
+| [Breadboard AZDelivery MB-102](https://www.amazon.de/dp/B07K8PQ4B5)            | 1 Stk.                   | 9,99 €; Nein            |
+| [Jumper-Kabel Elegoo (120 Stück)](https://www.amazon.de/dp/B01EV70C78)         | 1 Set                    | 6,99 €; Nein            |
+| [5-V-Netzteil/Netzstecker (Power Supply)](https://www.amazon.de/dp/B01HRR9GY4) | 1 Stk.                   | 16,99 €; Nein           |
+| [Touch Display](https://www.amazon.de/dp/B0FMYFKDLZ)                           | 1 Stk.                   | 75 €; Nein              |
+| Raspberry Pi 4B                                                                | 1 Stk.                   | musste nicht gekauft werden |
 
+<div style="page-break-before: always;"></div>
 
 ## 4 Inhaltlicher Teil
 
@@ -144,20 +144,18 @@ Der Controller aktualisiert die LED-Ausgabe standardmäßig in 100-ms-Takten und
 
 ## 5 Abschlussbericht
 
-### 5.2 Ergebnisse
+### 5.1 Zielerreichung und Ergebnisse
 
 - **Umgesetzte Ergebnisse:** Die Filterfunktion für einzelne Bahnen und Fahrtrichtungen wurde wie geplant umgesetzt.
 - **Nicht oder teilweise umgesetzte Ziele:** Das vollständige Freiburger Straßenbahnnetz wurde nicht abgebildet. Die Linien werden linear dargestellt und müssen über den Bildschirm gewechselt werden. Die Darstellung des gesamten Netzes lag außerhalb des verfügbaren Zeit- und Budgetrahmens.
 - **Probleme:** Der Anschluss des LED-Streifens erforderte eine lange Fehlersuche. Zusätzlich musste ein WS2812B-Streifen beschafft werden, was hohe Kosten verursachte; während der Fehlersuche wurde außerdem unnötigerweise ein weiteres Netzteil (Trafo) gekauft. Bei der TRIAS-Anbindung gab es Probleme mit der Fetching-Bibliothek. Für die Kommunikation mit TRIAS musste deshalb eine ältere HTTPS-Bibliothek verwendet werden. Außerdem ließ sich der ursprünglich geplante vollständige Stadtplan aufgrund der Größe des Produkts nicht umsetzen, sodass auf eine vereinfachte lineare Darstellung gewechselt wurde.
 
-### 5.3 Reflexion der Gruppenarbeit
+### 5.2 Reflexion der Gruppenarbeit
 
 - **Was lief in der Zusammenarbeit gut?** Keiner Wurde zurück gelassen. Wissens stände wurden durch gute Kommunikation bei allen auf gleichem level gehalten. Abstimmung alle waren sich einig. Aufgabenverteilung. Anwesenheiten. Selbst bei überschätzung des umfangs schnelle und einfachere alternativen gefunden ohne die idee des projekts zu beschädigen 
 - **Welche Schwierigkeiten gab es?** Projektumfang überschätzt.
 - **Wie wurden Aufgaben und Entscheidungen abgestimmt?** Gemeinschaftliche Ideenfindeung, arbeitsverteilung, planung. Raum für diskusionen war gegeben.
 - **Was würden wir beim nächsten Projekt anders machen?** Genscheit planen sind zusammen eher halsüberkopf in die umsetzung gegangen
-
-### 5.4 Resultat mit stand Aufbau
 
 ## 6 Quellenverzeichnis und KI-Prompts
 
@@ -195,7 +193,7 @@ Für den Kauf des WS2812B-Streifens im Omega und des im Laden gekauften Netzteil
 
 ### KI-Nutzung und verwendete Prompts
 
-**Tabelle 8: Dokumentation der KI-Nutzung und verwendeter Prompts**
+**Tabelle 4: Dokumentation der KI-Nutzung und verwendeter Prompts**
 
 | KI-Werkzeug/Modell   | Datum      | Zweck                                                                                       | Vollständiger Prompt                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |----------------------|------------|---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -210,12 +208,12 @@ Für den Kauf des WS2812B-Streifens im Omega und des im Laden gekauften Netzteil
 
 | Abbildung | Titel                                                            |       Seite |
 |-----------|------------------------------------------------------------------|------------:|
-| 1         | [Gantt-Diagramm der Arbeitspakete](#abbildung-1)                 | nach Export |
-| 2         | [EPK des technischen Live-Datenflusses von LEData](#abbildung-2) | nach Export |
+| 1         | [Gantt-Diagramm der Arbeitspakete](#abbildung-1)                 | 24 |
+| 2         | [EPK des technischen Live-Datenflusses von LEData](#abbildung-2) | 27 |
 
 ## 8 Materialverzeichnis
 
-**Tabelle 10: Materialverzeichnis**
+**Tabelle 5: Materialverzeichnis**
 
 | Material/Komponente                     |  Menge | Verwendung                                                                           | Bezugsquelle                                                |
 |-----------------------------------------|-------:|--------------------------------------------------------------------------------------|-------------------------------------------------------------|
@@ -227,3 +225,50 @@ Für den Kauf des WS2812B-Streifens im Omega und des im Laden gekauften Netzteil
 | 5-V-Netzteil/Netzstecker (Power Supply) | 1 Stk. | Stromversorgung der Komponenten; tatsächlicher Einsatz nicht dokumentiert            | [Amazon-Produktlink](https://www.amazon.de/dp/B01HRR9GY4)   |
 | Touch Display                           | 1 Stk. | Anzeige und Bedienung der Fahrtenübersicht und Detailansicht                         | [Amazon-Produktlink](https://www.amazon.de/dp/B0FMYFKDLZ)   |
 | Raspberry Pi 4B                         | 1 Stk. | Ausführung der Anwendung und Steuerung der Hardware                                  | Vorhanden; musste laut Kostenübersicht nicht gekauft werden |
+
+<div style="page-break-before: always;"></div>
+
+## Anhang A: Projektstrukturplan
+
+Die Arbeitspakete wurden aus den Sitzungsprotokollen übernommen. Der dokumentierte
+Ergebnisstand wird wiedergegeben; ein formales Abnahmekriterium ist nicht für jedes
+Arbeitspaket festgehalten.
+
+**Tabelle 6: Projektstrukturplan (Entwurf aus den Sitzungsprotokollen)**
+
+| AP-Code | Arbeitspaket                                       | Aufgaben/Abgrenzung                                                                                                              | Ergebnis/Stand laut Protokoll                                                                            | Zuständig                                                                                                 |
+|---------|----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| AP 1    | Ausstattung und Display vorbereiten                | Komponenten auspacken; Touchdisplay montieren und ansteuern                                                                      | Display wurde angesteuert (im Protokoll mit Häkchen markiert); übrige Schritte als Ergebnisse aufgeführt | Zuständigkeit nicht angegeben                                                                             |
+| AP 2    | Stromversorgung und TRIAS-Zugang vorbereiten       | Stromversorgung testen; TRIAS-Zugang anfragen                                                                                    | Beide Schritte als Ergebnisse des Tages aufgeführt                                                       | Stromversorgung: Jannik Brack und Lena Hackenjos; TRIAS-Zugang: Raffael Langklotz und Valentino Schreiner |
+| AP 3    | LED-Ansteuerung und TRIAS-Abfrage prüfen           | LED-Ansteuerung untersuchen; TRIAS-Abfrage durchführen                                                                           | LED-Ansteuerung fehlerhaft; TRIAS-Abfrage erfolgreich                                                    | LED-Ansteuerung: Jannik Brack; TRIAS-Abfrage: Raffael Langklotz und Valentino Schreiner                   |
+| AP 4    | LED-Fehlersuche                                    | LED-Fehler untersuchen und Fehlersuche durchführen                                                                               | Fehler ungelöst; Fehlersuche erfolglos                                                                   | Fehleruntersuchung: gesamtes Team; Fehlersuche: Jannik Brack                                              |
+| AP 5    | LED-Protokoll und Muster erproben                  | WS2812B-Protokoll erkennen; LED-Muster testen                                                                                    | WS2812B-Protokoll erkannt; LED-Muster getestet                                                           | Protokoll: gesamtes Team; LED-Muster: Jannik Brack                                                        |
+| AP 6    | Linien vermessen und Schnittstellen klären         | Linien vermessen; offene Schnittstellen erfassen                                                                                 | Linien vermessen; Schnittstellen noch offen                                                              | Linienvermessung: gesamtes Team; Schnittstellen: Zuständigkeit nicht angegeben                            |
+| AP 7    | Fahrtenmodell abstimmen                            | Fahrtenmodell abstimmen                                                                                                          | Abstimmung als Arbeitsschritt dokumentiert                                                               | Jannik Brack                                                                                              |
+| AP 8    | Baustellenlogik planen                             | Baustellenlogik planen                                                                                                           | Planung als Arbeitsschritt dokumentiert                                                                 | Lena Hackenjos                                                                                            |
+| AP 9    | Fahrtübersicht konzipieren                         | Fahrtübersicht konzipieren                                                                                                       | Konzeption als Arbeitsschritt dokumentiert                                                               | Valentino Schreiner                                                                                       |
+| AP 10   | Detailansicht konzipieren                          | Detailansicht konzipieren                                                                                                        | Konzeption als Arbeitsschritt dokumentiert                                                               | Raffael Langklotz                                                                                         |
+| AP 11   | Fahrtenmodell umsetzen                             | Abgestimmtes Fahrtenmodell umsetzen                                                                                              | Als umgesetzt dokumentiert                                                                               | Jannik Brack                                                                                              |
+| AP 12   | Baustellenlogik umsetzen                           | Geplante Baustellenlogik umsetzen                                                                                                | Als umgesetzt dokumentiert                                                                               | Lena Hackenjos                                                                                            |
+| AP 13   | Fahrtübersicht umsetzen                            | Konzipierte Fahrtübersicht umsetzen                                                                                              | Als umgesetzt dokumentiert                                                                               | Valentino Schreiner                                                                                       |
+| AP 14   | Detailansicht umsetzen                             | Konzipierte Detailansicht umsetzen                                                                                              | Als umgesetzt dokumentiert                                                                               | Raffael Langklotz                                                                                         |
+| AP 15   | Betriebsmodi integrieren                           | Betriebsmodi integrieren                                                                                                         | Als Arbeitsschritt dokumentiert; Status nicht näher angegeben                                            | Jannik Brack und Lena Hackenjos                                                                           |
+| AP 16   | Regressionstests planen                            | Regressionstests planen                                                                                                          | Planung dokumentiert                                                                                     | Valentino Schreiner und Raffael Langklotz                                                                 |
+| AP 17   | Startlogik umsetzen                                | Startlogik umsetzen                                                                                                              | Als umgesetzt dokumentiert                                                                               | Jannik Brack und Lena Hackenjos                                                                           |
+| AP 18   | Testsuite erweitern                                | Testsuite erweitern                                                                                                              | Als Ergebnis des Tages aufgeführt                                                                        | Valentino Schreiner und Raffael Langklotz                                                                 |
+| AP 19   | Grenzsortierung korrigieren                        | Grenzsortierung korrigieren                                                                                                      | Als korrigiert dokumentiert                                                                              | Lena Hackenjos und Jannik Brack                                                                           |
+| AP 20   | Richtungstests ergänzen                            | Richtungstests ergänzen                                                                                                          | Als Ergebnis des Tages aufgeführt                                                                        | Valentino Schreiner und Raffael Langklotz                                                                 |
+| AP 21   | Touch-UI gemeinsam planen und KI-gestützt umsetzen | Touch-UI gemeinsam planen und mit KI umsetzen                                                                                    | Als gemeinsames Ergebnis in Protokoll 11 dokumentiert                                                    | Jannik Brack, Lena Hackenjos, Raffael Langklotz und Valentino Schreiner                                   |
+| AP 22   | Veraltete Antworten verwerfen                      | Veraltete Antworten verwerfen                                                                                                   | Als Ergebnis des Tages aufgeführt                                                                        | Jannik Brack und Lena Hackenjos                                                                           |
+| AP 23   | Regressionstests abschließen                       | Regressionstests abschließen                                                                                                    | Als abgeschlossen dokumentiert                                                                           | Valentino Schreiner und Raffael Langklotz                                                                 |
+| AP 24   | Hardware fertigstellen                             | Druckteile verkleben; LED-Streifen in das Darstellungsmodell einsetzen; Lötstellen herstellen; Raspberry Pi mit Gehäuse versehen | Hardware als fertiggestellt dokumentiert; Einzelschritte im protokollierten Arbeitsablauf genannt        | Hardwarefertigstellung: gesamtes Team; Zuständigkeit für Einzelschritte nicht separat angegeben           |
+| AP 25   | Projektdokumentation erstellen und abgeben         | Projektdokumentation schreiben und abgeben                                                                                      | Als abgeschlossen dokumentiert                                                                           | Jannik Brack, Lena Hackenjos, Raffael Langklotz und Valentino Schreiner                                   |
+
+<div style="page-break-before: always;"></div>
+
+## Anhang B: Bildquellennachweis
+
+Das Beispielbild auf der ersten Seite des Original-Projektantrags (Gesamtexport,
+S. 4) stammt aus folgender Veröffentlichung:
+
+- Schmittner, Michael (2025): *Ein echter Blickfang: Der blinkende U-Bahn Streckenplan*. Arabella Bayern, veröffentlicht am 20.08.2025. Bildnachweis: Paul Wunsch. URL: https://www.arabella-bayern.de/ein-echter-blickfang-der-blinkende-u-bahn-streckenplan-1858774/ (abgerufen am 26.11.2026).

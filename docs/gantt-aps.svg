@@ -3,10 +3,10 @@
   <desc id="desc">Zeitachse vom 15. Juli bis zum 26. November 2026. Die Balken zeigen die Laufzeit der Arbeitspakete; die AP-Nummern stehen einheitlich rechts neben der Zeitachse. Arbeitspakete derselben Phase verlaufen parallel.</desc>
   <style>
     text { font-family: Arial, Helvetica, sans-serif; fill: #222; }
-    .title { font-size: 20px; font-weight: 700; }
-    .subtitle { font-size: 13px; fill: #555; }
-    .axis-label { font-size: 12px; fill: #444; }
-    .ap-label { font-size: 14px; font-weight: 700; }
+    .title { font-size: 28px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #555; }
+    .axis-label { font-size: 18px; fill: #444; }
+    .ap-label { font-size: 18px; font-weight: 700; }
     .grid { stroke: #d7dce0; stroke-width: 1; }
     .axis { stroke: #59636e; stroke-width: 1.2; }
     .bar { fill: #32816f; }
